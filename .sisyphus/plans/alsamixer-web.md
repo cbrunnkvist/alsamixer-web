@@ -940,7 +940,7 @@ Max Concurrent: 6 (Wave 1 & 3)
 
 ---
 
-- [ ] 13. Terminal/ASCII Theme (Complete)
+- [x] 13. Terminal/ASCII Theme (Complete)
 
   **What to do**:
   - Complete `web/static/themes/terminal.css`
@@ -1034,7 +1034,7 @@ Max Concurrent: 6 (Wave 1 & 3)
 
 ---
 
-- [ ] 14. Modern Clean Theme
+- [x] 14. Modern Clean Theme
 
   **What to do**:
   - Create `web/static/themes/modern.css`
@@ -1092,7 +1092,7 @@ Max Concurrent: 6 (Wave 1 & 3)
 
 ---
 
-- [ ] 15. Muji Design Theme
+- [x] 15. Muji Design Theme
 
   **What to do**:
   - Create `web/static/themes/muji.css`
@@ -1152,7 +1152,7 @@ Max Concurrent: 6 (Wave 1 & 3)
 
 ---
 
-- [ ] 16. Mobile-First Theme
+- [x] 16. Mobile-First Theme
 
   **What to do**:
   - Create `web/static/themes/mobile.css`
@@ -1218,7 +1218,7 @@ Max Concurrent: 6 (Wave 1 & 3)
 
 ---
 
-- [ ] 17. Creative Theme
+- [x] 17. Creative Theme
 
   **What to do**:
   - Create `web/static/themes/creative.css`
@@ -1280,7 +1280,7 @@ Max Concurrent: 6 (Wave 1 & 3)
 
 ---
 
-- [ ] 18. Theme CSS Variable System
+- [x] 18. Theme CSS Variable System
 
   **What to do**:
   - Create `web/static/themes/base.css` with:
