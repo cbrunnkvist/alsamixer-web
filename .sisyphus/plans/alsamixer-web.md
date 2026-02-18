@@ -1367,7 +1367,7 @@ Max Concurrent: 6 (Wave 1 & 3)
 
 ---
 
-- [ ] 19. End-to-End Integration (Backend + Frontend)
+- [x] 19. End-to-End Integration (Backend + Frontend)
 
   **What to do**:
   - Wire up all components:
@@ -1620,7 +1620,7 @@ Max Concurrent: 6 (Wave 1 & 3)
 
 ---
 
-- [ ] 23. Build System (Embed Static Files)
+- [x] 23. Build System (Embed Static Files)
 
   **What to do**:
   - Set up Go embed for static files:
@@ -1686,7 +1686,7 @@ Max Concurrent: 6 (Wave 1 & 3)
 
 ---
 
-- [ ] 24. Deployment Artifacts (Docker, Systemd)
+- [x] 24. Deployment Artifacts (Docker, Systemd)
 
   **What to do**:
   - Create `Dockerfile`:

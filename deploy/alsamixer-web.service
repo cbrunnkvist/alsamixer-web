@@ -1,0 +1,15 @@
+[Unit]
+Description=ALSA Mixer Web Interface
+After=network.target sound.target
+
+[Service]
+Type=simple
+User=alsamixer
+Group=alsamixer
+ExecStart=/usr/local/bin/alsamixer-web
+Restart=always
+RestartSec=5
+Environment="PORT=8080"
+
+[Install]
+WantedBy=multi-user.target

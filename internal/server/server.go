@@ -6,12 +6,11 @@ import (
 	"html/template"
 	"log"
 	"net/http"
-	"path/filepath"
-	"runtime"
 	"time"
 
 	"github.com/user/alsamixer-web/internal/alsa"
 	"github.com/user/alsamixer-web/internal/config"
+	"github.com/user/alsamixer-web/internal/embed"
 	"github.com/user/alsamixer-web/internal/sse"
 )
 
@@ -51,19 +50,8 @@ var allowedThemes = map[Theme]struct{}{
 }
 
 func mustParseTemplates() *template.Template {
-	_, filename, _, ok := runtime.Caller(0)
-	if !ok {
-		panic("unable to determine server source path")
-	}
-
-	rootDir := filepath.Dir(filepath.Dir(filepath.Dir(filename)))
-	templatesDir := filepath.Join(rootDir, "web", "templates")
-
-	return template.Must(template.ParseFiles(
-		filepath.Join(templatesDir, "base.html"),
-		filepath.Join(templatesDir, "index.html"),
-		filepath.Join(templatesDir, "controls.html"),
-	))
+	// Use embed.TemplateFS() to get the embedded filesystem
+	return template.Must(template.ParseFS(embed.TemplateFS(), "*.html"))
 }
 
 func normalizeTheme(raw string) Theme {
@@ -104,6 +92,11 @@ func NewServer(cfg *config.Config, hub *sse.Hub) *Server {
 	return s
 }
 
+// Hub returns the SSE hub for use by the monitor
+func (s *Server) Hub() *sse.Hub {
+	return s.hub
+}
+
 // setupRoutes configures all HTTP routes.
 func (s *Server) setupRoutes() {
 	s.mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -132,8 +125,8 @@ func (s *Server) setupRoutes() {
 	// SSE endpoint
 	s.mux.Handle("/events", s.hub)
 
-	// Static file server
-	staticFS := http.FileServer(http.Dir("web/static"))
+	// Static file server (embedded)
+	staticFS := http.FileServer(http.FS(embed.StaticFS()))
 	s.mux.Handle("/static/", http.StripPrefix("/static/", staticFS))
 
 	// Control endpoints
