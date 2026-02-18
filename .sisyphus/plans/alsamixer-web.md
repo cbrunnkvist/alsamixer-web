@@ -583,7 +583,7 @@ Max Concurrent: 6 (Wave 1 & 3)
 
 ---
 
-- [ ] 7. HTMX Integration and SSE Connection
+- [x] 7. HTMX Integration and SSE Connection
 
   **What to do**:
   - Download HTMX 2.x (latest stable) and SSE extension
@@ -639,7 +639,7 @@ Max Concurrent: 6 (Wave 1 & 3)
 
 ---
 
-- [ ] 8. Basic HTML Templates (Control Rendering)
+- [x] 8. Basic HTML Templates (Control Rendering)
 
   **What to do**:
   - Create `web/templates/controls.html` with:
@@ -732,7 +732,7 @@ Max Concurrent: 6 (Wave 1 & 3)
 
 ---
 
-- [ ] 9. Volume Slider Component (Terminal/ASCII Theme)
+- [x] 9. Volume Slider Component (Terminal/ASCII Theme)
 
   **What to do**:
   - Create `web/static/themes/terminal.css`
@@ -791,7 +791,7 @@ Max Concurrent: 6 (Wave 1 & 3)
 
 ---
 
-- [ ] 10. Mute/Capture Toggle Components
+- [x] 10. Mute/Capture Toggle Components
 
   **What to do**:
   - Create toggle button styles in terminal.css
@@ -845,7 +845,7 @@ Max Concurrent: 6 (Wave 1 & 3)
 
 ---
 
-- [ ] 11. Card/Control Enumeration Display
+- [x] 11. Card/Control Enumeration Display
 
   **What to do**:
   - Display sound cards as sections/containers
@@ -891,7 +891,7 @@ Max Concurrent: 6 (Wave 1 & 3)
 
 ---
 
-- [ ] 12. Theme Selector UI
+- [x] 12. Theme Selector UI
 
   **What to do**:
   - Add theme selector dropdown/button to header

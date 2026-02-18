@@ -10,12 +10,16 @@
       class="mixer-stream"
       hx-ext="sse"
       sse-connect="/events"
-      aria-live="polite"
-      aria-atomic="false"
-    >
-      <p class="mixer-placeholder" role="status" aria-live="polite">
-        Loading mixer controls...
-      </p>
+       aria-live="polite"
+       aria-atomic="false"
+     >
+      {{if .Cards}}
+        {{template "controls" .}}
+      {{else}}
+        <p class="mixer-placeholder" role="status" aria-live="polite">
+          Loading mixer controls...
+        </p>
+      {{end}}
     </div>
   </section>
 {{ end }}

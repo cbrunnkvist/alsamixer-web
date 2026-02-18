@@ -5,12 +5,35 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/user/alsamixer-web/internal/config"
 	"github.com/user/alsamixer-web/internal/sse"
 )
+
+type fakeMixer struct {
+	card    uint
+	control string
+	values  []int
+	called  bool
+	err     error
+}
+
+func (f *fakeMixer) SetVolume(card uint, control string, values []int) error {
+	f.card = card
+	f.control = control
+	if values != nil {
+		f.values = append([]int(nil), values...)
+	} else {
+		f.values = nil
+	}
+	f.called = true
+	return f.err
+}
 
 func TestNewServer(t *testing.T) {
 	cfg := &config.Config{
@@ -76,11 +99,11 @@ func TestServerRoutes(t *testing.T) {
 		expectedBody   string
 	}{
 		{
-			name:           "GET / returns alsamixer-web",
+			name:           "GET / returns HTML shell",
 			method:         "GET",
 			path:           "/",
 			expectedStatus: http.StatusOK,
-			expectedBody:   "alsamixer-web",
+			expectedBody:   "<!doctype html>",
 		},
 		{
 			name:           "GET /nonexistent returns 404",
@@ -89,11 +112,10 @@ func TestServerRoutes(t *testing.T) {
 			expectedStatus: http.StatusNotFound,
 		},
 		{
-			name:           "POST /control/volume returns 501",
+			name:           "POST /control/volume without form data returns 400",
 			method:         "POST",
 			path:           "/control/volume",
-			expectedStatus: http.StatusNotImplemented,
-			expectedBody:   "Not Implemented",
+			expectedStatus: http.StatusBadRequest,
 		},
 		{
 			name:           "POST /control/mute returns 501",
@@ -101,6 +123,20 @@ func TestServerRoutes(t *testing.T) {
 			path:           "/control/mute",
 			expectedStatus: http.StatusNotImplemented,
 			expectedBody:   "Not Implemented",
+		},
+		{
+			name:           "GET / with valid theme query applies requested theme",
+			method:         "GET",
+			path:           "/?theme=modern",
+			expectedStatus: http.StatusOK,
+			expectedBody:   "/static/themes/modern.css",
+		},
+		{
+			name:           "GET / with invalid theme falls back to default",
+			method:         "GET",
+			path:           "/?theme=unknown",
+			expectedStatus: http.StatusOK,
+			expectedBody:   "/static/themes/terminal.css",
 		},
 		{
 			name:           "OPTIONS request returns 200",
@@ -132,11 +168,55 @@ func TestServerRoutes(t *testing.T) {
 				if err != nil {
 					t.Fatalf("Failed to read body: %v", err)
 				}
-				if string(body) != tt.expectedBody {
-					t.Errorf("Expected body %q, got %q", tt.expectedBody, string(body))
+				bodyStr := string(body)
+				if !strings.Contains(bodyStr, tt.expectedBody) {
+					t.Errorf("Expected body to contain %q, got %q", tt.expectedBody, bodyStr)
 				}
 			}
 		})
+	}
+}
+
+func TestVolumeHandler_Success(t *testing.T) {
+	cfg := &config.Config{
+		Port:     0,
+		BindAddr: "127.0.0.1",
+	}
+	hub := sse.NewHub()
+	srv := NewServer(cfg, hub)
+
+	fm := &fakeMixer{}
+	srv.mixer = fm
+
+	form := url.Values{}
+	form.Set("card", "0")
+	form.Set("control", "Master")
+	form.Set("volume", "75")
+
+	req := httptest.NewRequest(http.MethodPost, "/control/volume", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp := httptest.NewRecorder()
+	srv.VolumeHandler(resp, req)
+
+	if resp.Code != http.StatusNoContent {
+		t.Fatalf("expected status %d, got %d", http.StatusNoContent, resp.Code)
+	}
+
+	if !fm.called {
+		t.Fatalf("expected mixer.SetVolume to be called")
+	}
+
+	if fm.card != 0 {
+		t.Errorf("expected card 0, got %d", fm.card)
+	}
+
+	if fm.control != "Master" {
+		t.Errorf("expected control 'Master', got %q", fm.control)
+	}
+
+	if len(fm.values) != 1 || fm.values[0] != 75 {
+		t.Errorf("expected values [75], got %v", fm.values)
 	}
 }
 

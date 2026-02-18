@@ -6,11 +6,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ block "title" . }}ALSA Mixer Web{{ end }}</title>
 
+    {{ $theme := or .Theme "terminal" }}
+
     <link rel="stylesheet" href="/static/css/base.css">
-    <link rel="stylesheet" href="/static/themes/terminal.css">
+    <link rel="stylesheet" href="/static/themes/{{$theme}}.css">
 
     <script src="/static/js/htmx.min.js" defer></script>
     <script src="/static/js/htmx-sse.js" defer></script>
+    <script src="/static/js/mixer-volume.js" defer></script>
   </head>
   <body class="app-shell">
     <a href="#main-content" class="skip-link">Skip to main content</a>
@@ -18,7 +21,21 @@
     <div id="sr-announcer" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
 
     <header class="app-header" role="banner">
-      <h1 class="app-title">{{ block "header_title" . }}ALSA Mixer Web{{ end }}</h1>
+      <div class="app-header__inner">
+        <h1 class="app-title">{{ block "header_title" . }}ALSA Mixer Web{{ end }}</h1>
+
+        <form class="theme-switcher" method="get" aria-label="Theme selector">
+          <label for="theme-select" class="theme-switcher__label">Theme</label>
+          <select id="theme-select" name="theme" class="theme-switcher__select">
+            <option value="terminal" {{if eq $theme "terminal"}}selected{{end}}>Terminal</option>
+            <option value="modern" {{if eq $theme "modern"}}selected{{end}}>Modern</option>
+            <option value="muji" {{if eq $theme "muji"}}selected{{end}}>Muji</option>
+            <option value="mobile" {{if eq $theme "mobile"}}selected{{end}}>Mobile</option>
+            <option value="creative" {{if eq $theme "creative"}}selected{{end}}>Creative</option>
+          </select>
+          <button type="submit" class="theme-switcher__submit">Apply</button>
+        </form>
+      </div>
     </header>
 
     <main id="main-content" class="app-main" role="main" aria-live="polite" aria-atomic="false">

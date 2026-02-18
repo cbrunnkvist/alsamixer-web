@@ -17,6 +17,7 @@ type ControlView struct {
 	ID          string
 	Name        string
 	Description string
+	CardID      uint
 
 	HasVolume       bool
 	VolumeAriaLabel string
@@ -79,6 +80,7 @@ func TestControlsTemplateExecutesWithMockData(t *testing.T) {
 						ID:               "master",
 						Name:             "Master",
 						Description:      "Master playback volume",
+						CardID:           0,
 						HasVolume:        true,
 						VolumeAriaLabel:  "Master volume",
 						VolumeMin:        0,

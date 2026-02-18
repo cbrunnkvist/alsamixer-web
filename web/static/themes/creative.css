@@ -1,0 +1,891 @@
+/**
+ * Cyberpunk Neon Theme for ALSA Mixer Web
+ * Dark, moody, and vibrant with glowing neon accents
+ * Inspired by synthwave and cyberpunk aesthetics
+ */
+
+/* ============================================================
+   CSS Custom Properties - Neon color palette
+   ============================================================ */
+:root {
+  /* Core cyberpunk dark backgrounds */
+  --cyber-bg-primary: #0a0a12;
+  --cyber-bg-secondary: #12121f;
+  --cyber-bg-tertiary: #1a1a2e;
+  --cyber-bg-glass: rgba(18, 18, 31, 0.85);
+  
+  /* Neon accent colors */
+  --cyber-cyan: #00f5ff;
+  --cyber-cyan-glow: rgba(0, 245, 255, 0.6);
+  --cyber-cyan-dim: #00a8b0;
+  --cyber-magenta: #ff00ff;
+  --cyber-magenta-glow: rgba(255, 0, 255, 0.6);
+  --cyber-magenta-dim: #b000b0;
+  
+  /* Secondary accents */
+  --cyber-yellow: #f0f000;
+  --cyber-yellow-glow: rgba(240, 240, 0, 0.5);
+  --cyber-orange: #ff6b35;
+  --cyber-pink: #ff006e;
+  
+  /* Text colors */
+  --cyber-text-primary: #e8e8f0;
+  --cyber-text-secondary: #a0a0b8;
+  --cyber-text-muted: #606070;
+  --cyber-text-bright: #ffffff;
+  
+  /* Gradients */
+  --cyber-gradient-cyan: linear-gradient(135deg, #00f5ff, #00a8b0);
+  --cyber-gradient-magenta: linear-gradient(135deg, #ff00ff, #b000b0);
+  --cyber-gradient-volume: linear-gradient(90deg, #ff00ff, #00f5ff);
+  --cyber-gradient-card: linear-gradient(145deg, rgba(26, 26, 46, 0.9), rgba(18, 18, 31, 0.95));
+  
+  /* Glow effects */
+  --cyber-glow-cyan: 0 0 10px var(--cyber-cyan-glow), 0 0 20px var(--cyber-cyan-glow);
+  --cyber-glow-magenta: 0 0 10px var(--cyber-magenta-glow), 0 0 20px var(--cyber-magenta-glow);
+  --cyber-glow-soft: 0 0 15px rgba(0, 245, 255, 0.15);
+  
+  /* Borders */
+  --cyber-border-cyan: 1px solid rgba(0, 245, 255, 0.3);
+  --cyber-border-magenta: 1px solid rgba(255, 0, 255, 0.3);
+  --cyber-border-dim: 1px solid rgba(255, 255, 255, 0.1);
+  
+  /* Focus styles */
+  --cyber-focus-color: var(--cyber-cyan);
+  --cyber-focus-width: 2px;
+  --cyber-focus-offset: 3px;
+  
+  /* Typography */
+  --cyber-font-display: "Orbitron", "Rajdhani", "Audiowide", sans-serif;
+  --cyber-font-body: "Rajdhani", "Chakra Petch", "Exo 2", sans-serif;
+  --cyber-font-mono: "Share Tech Mono", "VT323", monospace;
+  --cyber-font-size: 16px;
+  --cyber-line-height: 1.5;
+  
+  /* Spacing */
+  --cyber-radius-sm: 4px;
+  --cyber-radius-md: 8px;
+  --cyber-radius-lg: 12px;
+}
+
+/* ============================================================
+   Base Reset and Typography
+   ============================================================ */
+
+body {
+  font-family: var(--cyber-font-body);
+  font-size: var(--cyber-font-size);
+  line-height: var(--cyber-line-height);
+  background-color: var(--cyber-bg-primary);
+  background-image: 
+    radial-gradient(ellipse at 20% 20%, rgba(0, 245, 255, 0.03) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 80%, rgba(255, 0, 255, 0.03) 0%, transparent 50%),
+    linear-gradient(180deg, var(--cyber-bg-primary) 0%, var(--cyber-bg-secondary) 100%);
+  background-attachment: fixed;
+  color: var(--cyber-text-primary);
+  min-height: 100vh;
+}
+
+/* Animated grid background overlay */
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    linear-gradient(rgba(0, 245, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 245, 255, 0.03) 1px, transparent 1px);
+  background-size: 50px 50px;
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* ============================================================
+   App Shell
+   ============================================================ */
+
+.app-shell {
+  background: transparent;
+  position: relative;
+}
+
+.app-header {
+  border-bottom: var(--cyber-border-cyan);
+  background: var(--cyber-bg-glass);
+  backdrop-filter: blur(10px);
+  padding: 1rem 1.5rem;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Header accent line */
+.app-header::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--cyber-gradient-volume);
+  opacity: 0.6;
+}
+
+.app-title {
+  font-family: var(--cyber-font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--cyber-cyan);
+  margin: 0;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  text-shadow: 0 0 10px var(--cyber-cyan-glow);
+  position: relative;
+}
+
+/* Glitch effect on title */
+.app-title::before,
+.app-title::after {
+  content: attr(data-text);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.app-title::before {
+  color: var(--cyber-magenta);
+  animation: glitch-1 2s infinite linear alternate-reverse;
+  clip-path: polygon(0 0, 100% 0, 100% 35%, 0 35%);
+  transform: translateX(-2px);
+}
+
+.app-title::after {
+  color: var(--cyber-yellow);
+  animation: glitch-2 3s infinite linear alternate-reverse;
+  clip-path: polygon(0 65%, 100% 65%, 100% 100%, 0 100%);
+  transform: translateX(2px);
+}
+
+@keyframes glitch-1 {
+  0%, 90%, 100% { transform: translateX(-2px); }
+  92% { transform: translateX(2px); }
+  94% { transform: translateX(-1px); }
+  96% { transform: translateX(3px); }
+}
+
+@keyframes glitch-2 {
+  0%, 90%, 100% { transform: translateX(2px); }
+  93% { transform: translateX(-2px); }
+  95% { transform: translateX(1px); }
+  97% { transform: translateX(-3px); }
+}
+
+.app-main {
+  padding: 1.5rem;
+  position: relative;
+}
+
+.app-footer {
+  border-top: var(--cyber-border-dim);
+  background: var(--cyber-bg-secondary);
+  padding: 0.75rem 1.5rem;
+  font-family: var(--cyber-font-mono);
+  font-size: 0.8rem;
+  color: var(--cyber-text-muted);
+}
+
+/* ============================================================
+   Connection Status
+   ============================================================ */
+
+.connection-status {
+  color: var(--cyber-text-secondary);
+  font-family: var(--cyber-font-mono);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.connection-status__label {
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  letter-spacing: 0.15em;
+  color: var(--cyber-text-muted);
+}
+
+.connection-status__label::before {
+  content: "//";
+  color: var(--cyber-cyan-dim);
+  margin-right: 0.5rem;
+}
+
+.connection-status__value {
+  color: var(--cyber-cyan);
+  font-weight: 600;
+  text-shadow: 0 0 5px var(--cyber-cyan-glow);
+  position: relative;
+}
+
+/* Pulsing dot */
+.connection-status__value::before {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background: var(--cyber-cyan);
+  border-radius: 50%;
+  margin-right: 0.5rem;
+  box-shadow: 0 0 8px var(--cyber-cyan-glow);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.9); }
+}
+
+/* ============================================================
+   Mixer Shell and Stream
+   ============================================================ */
+
+.mixer-shell {
+  max-width: 80rem;
+  margin-inline: auto;
+}
+
+.mixer-stream {
+  border: var(--cyber-border-dim);
+  border-radius: var(--cyber-radius-lg);
+  padding: 1.5rem;
+  background: var(--cyber-bg-secondary);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Corner accents */
+.mixer-stream::before,
+.mixer-stream::after {
+  content: "";
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  border: 2px solid var(--cyber-cyan);
+  opacity: 0.5;
+}
+
+.mixer-stream::before {
+  top: 10px;
+  left: 10px;
+  border-right: none;
+  border-bottom: none;
+}
+
+.mixer-stream::after {
+  bottom: 10px;
+  right: 10px;
+  border-left: none;
+  border-top: none;
+}
+
+.mixer-placeholder {
+  color: var(--cyber-text-muted);
+  font-family: var(--cyber-font-mono);
+  text-align: center;
+  padding: 2rem;
+}
+
+.mixer-placeholder::before {
+  content: "◈";
+  display: block;
+  font-size: 2rem;
+  color: var(--cyber-cyan);
+  margin-bottom: 0.5rem;
+  animation: spin 4s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ============================================================
+   Mixer Cards (Sound Cards)
+   ============================================================ */
+
+.mixer-card {
+  margin-bottom: 2rem;
+  border: var(--cyber-border-dim);
+  border-radius: var(--cyber-radius-md);
+  background: var(--cyber-gradient-card);
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.mixer-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--cyber-glow-soft);
+}
+
+/* Card glow border on hover */
+.mixer-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--cyber-gradient-volume);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.mixer-card:hover::before {
+  opacity: 1;
+}
+
+.mixer-card__header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 1rem 1.25rem;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.mixer-card__title {
+  font-family: var(--cyber-font-display);
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--cyber-magenta);
+  margin: 0 0 0.35rem 0;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.mixer-card__description {
+  font-family: var(--cyber-font-body);
+  font-size: 0.85rem;
+  color: var(--cyber-text-muted);
+  margin: 0;
+  letter-spacing: 0.03em;
+}
+
+.mixer-card__controls {
+  padding: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+/* ============================================================
+   Mixer Controls (Individual Controls)
+   ============================================================ */
+
+.mixer-control {
+  border: var(--cyber-border-dim);
+  border-radius: var(--cyber-radius-sm);
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.3);
+  flex: 1 1 300px;
+  min-width: 280px;
+  max-width: 100%;
+  position: relative;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.mixer-control::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3px;
+  height: 100%;
+  background: var(--cyber-cyan);
+  opacity: 0.3;
+  transition: opacity 0.3s ease, box-shadow 0.3s ease;
+}
+
+.mixer-control:hover::before {
+  opacity: 1;
+  box-shadow: 0 0 10px var(--cyber-cyan-glow);
+}
+
+.mixer-control:hover {
+  border-color: rgba(0, 245, 255, 0.2);
+}
+
+.mixer-control__header {
+  margin-bottom: 0.75rem;
+}
+
+.mixer-control__label {
+  font-family: var(--cyber-font-display);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--cyber-text-primary);
+  margin: 0 0 0.25rem 0;
+  letter-spacing: 0.05em;
+}
+
+.mixer-control__description {
+  font-family: var(--cyber-font-body);
+  font-size: 0.8rem;
+  color: var(--cyber-text-secondary);
+  margin: 0;
+}
+
+.mixer-control__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* ============================================================
+   Volume Slider - Neon Style
+   ============================================================ */
+
+.mixer-control__volume {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  cursor: pointer;
+  position: relative;
+}
+
+.mixer-control__volume-track {
+  flex: 1;
+  height: 12px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Neon glow effect on track */
+.mixer-control__volume-track::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(0, 245, 255, 0.1) 50%, transparent 100%);
+  animation: scanline 3s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes scanline {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
+.mixer-control__volume-fill {
+  height: 100%;
+  width: var(--volume-percent, 50%);
+  background: var(--cyber-gradient-volume);
+  border-radius: 5px;
+  position: relative;
+  transition: width 0.15s ease-out;
+  box-shadow: 0 0 10px var(--cyber-cyan-glow);
+}
+
+/* Shimmer effect on fill */
+.mixer-control__volume-fill::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.3) 50%, transparent 100%);
+  animation: shimmer 2s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0%, 100% { transform: translateX(-100%); opacity: 0; }
+  50% { transform: translateX(100%); opacity: 1; }
+}
+
+.mixer-control__value {
+  font-family: var(--cyber-font-mono);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--cyber-cyan);
+  min-width: 4ch;
+  text-align: right;
+  text-shadow: 0 0 5px var(--cyber-cyan-glow);
+}
+
+/* Hover effects */
+.mixer-control__volume:hover .mixer-control__volume-track {
+  border-color: rgba(0, 245, 255, 0.4);
+  box-shadow: 0 0 15px var(--cyber-cyan-glow);
+}
+
+.mixer-control__volume:hover .mixer-control__volume-fill {
+  box-shadow: 0 0 20px var(--cyber-magenta-glow), 0 0 30px var(--cyber-cyan-glow);
+}
+
+/* ============================================================
+   Toggle Buttons - Neon Switch Style
+   ============================================================ */
+
+.mixer-control__toggle {
+  font-family: var(--cyber-font-body);
+  font-size: 0.85rem;
+  font-weight: 500;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--cyber-radius-sm);
+  color: var(--cyber-text-secondary);
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Toggle indicator */
+.mixer-control__toggle::before {
+  content: "";
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--cyber-text-muted);
+  transition: all 0.3s ease;
+  box-shadow: inset 0 0 4px rgba(0, 0, 0, 0.5);
+}
+
+.mixer-control__toggle:hover {
+  border-color: rgba(0, 245, 255, 0.3);
+  background: rgba(0, 245, 255, 0.05);
+}
+
+.mixer-control__toggle-label {
+  color: inherit;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+}
+
+/* Active state for mute toggle */
+.mixer-control__toggle--mute[aria-checked="true"] {
+  background: rgba(255, 0, 0, 0.1);
+  border-color: rgba(255, 0, 0, 0.4);
+  color: #ff4444;
+}
+
+.mixer-control__toggle--mute[aria-checked="true"]::before {
+  background: #ff4444;
+  box-shadow: 0 0 10px rgba(255, 0, 0, 0.6);
+}
+
+/* Active state for capture toggle */
+.mixer-control__toggle--capture[aria-checked="true"] {
+  background: rgba(0, 245, 255, 0.1);
+  border-color: rgba(0, 245, 255, 0.4);
+  color: var(--cyber-cyan);
+}
+
+.mixer-control__toggle--capture[aria-checked="true"]::before {
+  background: var(--cyber-cyan);
+  box-shadow: 0 0 10px var(--cyber-cyan-glow);
+}
+
+/* ============================================================
+   Focus Styles - High Visibility Neon
+   ============================================================ */
+
+/* Override accessibility.css focus for cyberpunk theme */
+:where(a,
+button,
+input,
+textarea,
+select,
+[role="button"],
+[role="slider"],
+[role="switch"]):focus-visible {
+  outline: var(--cyber-focus-width) solid var(--cyber-focus-color);
+  outline-offset: var(--cyber-focus-offset);
+  box-shadow: var(--cyber-glow-cyan);
+}
+
+/* Specific focus styles for cyberpunk elements */
+.mixer-control__volume:focus-visible {
+  outline: var(--cyber-focus-width) solid var(--cyber-cyan);
+  outline-offset: var(--cyber-focus-offset);
+  background: rgba(0, 245, 255, 0.05);
+  border-radius: var(--cyber-radius-sm);
+}
+
+.mixer-control__toggle:focus-visible {
+  outline: var(--cyber-focus-width) solid var(--cyber-cyan);
+  outline-offset: 2px;
+  border-color: var(--cyber-cyan);
+  box-shadow: var(--cyber-glow-cyan);
+}
+
+.mixer-card:focus-within {
+  border-color: rgba(0, 245, 255, 0.3);
+  box-shadow: var(--cyber-glow-soft);
+}
+
+/* Skip link focus */
+.skip-link:focus-visible {
+  transform: translateY(0);
+  outline: var(--cyber-focus-width) solid var(--cyber-cyan);
+  outline-offset: 2px;
+  background: var(--cyber-bg-primary);
+  color: var(--cyber-cyan);
+  border: 1px solid var(--cyber-cyan);
+  box-shadow: var(--cyber-glow-cyan);
+  font-family: var(--cyber-font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+/* Selection color */
+::selection {
+  background: var(--cyber-cyan);
+  color: var(--cyber-bg-primary);
+  text-shadow: none;
+}
+
+/* ============================================================
+   Screen Reader Only
+   ============================================================ */
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ============================================================
+   Responsive Design
+   ============================================================ */
+
+@media (max-width: 768px) {
+  :root {
+    --cyber-font-size: 15px;
+  }
+  
+  .app-header {
+    padding: 0.75rem 1rem;
+  }
+  
+  .app-title {
+    font-size: 1.25rem;
+  }
+  
+  .app-main {
+    padding: 1rem;
+  }
+  
+  .mixer-card__controls {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  
+  .mixer-control {
+    flex: 1 1 auto;
+    min-width: auto;
+  }
+  
+  .mixer-stream {
+    padding: 1rem;
+  }
+  
+  /* Simplified effects on mobile for performance */
+  .mixer-stream::before,
+  .mixer-stream::after {
+    display: none;
+  }
+  
+  body::before {
+    background-size: 30px 30px;
+  }
+}
+
+/* Horizontal scroll on mobile for wide layouts */
+@media (max-width: 480px) {
+  .mixer-card__controls {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 0.75rem;
+    padding-bottom: 0.5rem;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .mixer-control {
+    flex: 0 0 260px;
+    min-width: 260px;
+  }
+  
+  .app-title {
+    font-size: 1rem;
+    letter-spacing: 0.1em;
+  }
+  
+  /* Disable glitch effect on small screens */
+  .app-title::before,
+  .app-title::after {
+    display: none;
+  }
+}
+
+/* ============================================================
+   Windows High Contrast Mode Support
+   ============================================================ */
+
+@media (forced-colors: active) {
+  :root {
+    --cyber-bg-primary: Canvas;
+    --cyber-text-primary: CanvasText;
+    --cyber-cyan: Highlight;
+    --cyber-magenta: Highlight;
+    --cyber-focus-color: Highlight;
+  }
+  
+  body {
+    background-color: Canvas;
+    color: CanvasText;
+    background-image: none;
+  }
+  
+  body::before {
+    display: none;
+  }
+  
+  .mixer-card,
+  .mixer-control,
+  .mixer-control__toggle,
+  .mixer-control__volume-track {
+    border: 1px solid CanvasText;
+    forced-color-adjust: none;
+  }
+  
+  .mixer-control__volume-fill {
+    background: Highlight;
+  }
+  
+  .mixer-control__toggle[aria-checked="true"] {
+    background: Highlight;
+    color: HighlightText;
+  }
+  
+  :where(a,
+  button,
+  input,
+  textarea,
+  select,
+  [role="button"],
+  [role="slider"],
+  [role="switch"]):focus-visible {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+  }
+  
+  /* Disable animations in forced colors */
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+  }
+}
+
+/* ============================================================
+   Reduced Motion Support
+   ============================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  
+  /* Disable glitch effect */
+  .app-title::before,
+  .app-title::after {
+    display: none;
+  }
+  
+  /* Disable scanline and shimmer */
+  .mixer-control__volume-track::before,
+  .mixer-control__volume-fill::after {
+    display: none;
+  }
+}
+
+/* ============================================================
+   Print Styles
+   ============================================================ */
+
+@media print {
+  body {
+    background-color: white;
+    color: black;
+    background-image: none;
+  }
+  
+  body::before {
+    display: none;
+  }
+  
+  .mixer-card,
+  .mixer-control {
+    border: 1px solid black;
+    break-inside: avoid;
+  }
+  
+  .mixer-control__volume-fill {
+    background: black;
+  }
+  
+  .app-title {
+    color: black;
+    text-shadow: none;
+  }
+  
+  .app-title::before,
+  .app-title::after {
+    display: none;
+  }
+  
+  .app-footer {
+    display: none;
+  }
+  
+  /* Disable all effects */
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    box-shadow: none !important;
+  }
+}
+
+/* ============================================================
+   Dark Mode (already dark, but explicit for consistency)
+   ============================================================ */
+
+@media (prefers-color-scheme: dark) {
+  /* Theme is already optimized for dark mode */
+}

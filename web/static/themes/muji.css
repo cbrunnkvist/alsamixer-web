@@ -1,0 +1,545 @@
+/*
+ * Muji Theme - "No-brand quality goods"
+ * 
+ * Philosophy: Minimal ornamentation, functional clarity, natural textures.
+ * Earthy neutrals, generous whitespace, calm atmosphere.
+ * 
+ * Color Palette:
+ * - Background: beige (#F5F5DC), off-white (#FFFEF0), warm white (#FAF9F6)
+ * - Text: warm brown (#8B7355), dark gray (#4a4a4a), charcoal (#3d3d3d)
+ * - Accents: natural wood (#C4A77D), stone (#B8B0A8), moss (#9B9B7A)
+ * - Borders: subtle warm gray (#E8E4DC, #D9D4C9)
+ */
+
+/* ========================================
+   CSS Variables - Muji Design Tokens
+   ======================================== */
+
+:root {
+  /* Background layers */
+  --muji-bg-primary: #FAF9F6;
+  --muji-bg-secondary: #FFFEF0;
+  --muji-bg-tertiary: #F5F5DC;
+  --muji-bg-card: #FFFFFF;
+  --muji-bg-hover: #F0EDE5;
+  --muji-bg-active: #E8E4DC;
+  
+  /* Text colors */
+  --muji-text-primary: #3d3d3d;
+  --muji-text-secondary: #5a5a5a;
+  --muji-text-muted: #8B7355;
+  --muji-text-placeholder: #9a9a9a;
+  
+  /* Accent colors - natural materials */
+  --muji-accent-wood: #C4A77D;
+  --muji-accent-stone: #B8B0A8;
+  --muji-accent-moss: #9B9B7A;
+  --muji-accent-clay: #C9B8A8;
+  
+  /* Border colors */
+  --muji-border-subtle: #E8E4DC;
+  --muji-border-light: #F0EDE5;
+  --muji-border-medium: #D9D4C9;
+  
+  /* Spacing - generous whitespace */
+  --muji-space-xs: 0.5rem;
+  --muji-space-sm: 0.875rem;
+  --muji-space-md: 1.25rem;
+  --muji-space-lg: 2rem;
+  --muji-space-xl: 3rem;
+  --muji-space-xxl: 4rem;
+  
+  /* Typography */
+  --muji-font-body: "Helvetica Neue", "Hiragino Sans", "Noto Sans JP", system-ui, -apple-system, sans-serif;
+  --muji-font-mono: "SF Mono", "Monaco", "Inconsolata", monospace;
+  
+  /* Border radius - minimal */
+  --muji-radius-sm: 2px;
+  --muji-radius-md: 4px;
+  --muji-radius-lg: 6px;
+  
+  /* Shadows - subtle, natural */
+  --muji-shadow-sm: 0 1px 2px rgba(61, 61, 61, 0.04);
+  --muji-shadow-md: 0 2px 8px rgba(61, 61, 61, 0.06);
+  --muji-shadow-lg: 0 4px 16px rgba(61, 61, 61, 0.08);
+  
+  /* Focus ring - visible but understated */
+  --muji-focus-color: #8B7355;
+  --muji-focus-ring: 0 0 0 2px var(--muji-bg-primary), 0 0 0 4px var(--muji-focus-color);
+}
+
+/* ========================================
+   Base Styles
+   ======================================== */
+
+body {
+  font-family: var(--muji-font-body);
+  font-size: 15px;
+  line-height: 1.7;
+  background-color: var(--muji-bg-primary);
+  color: var(--muji-text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ========================================
+   App Shell
+   ======================================== */
+
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header - minimal, functional */
+.app-header {
+  padding: var(--muji-space-md) var(--muji-space-lg);
+  background-color: var(--muji-bg-card);
+  border-bottom: 1px solid var(--muji-border-subtle);
+}
+
+.app-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  color: var(--muji-text-primary);
+  text-transform: none;
+}
+
+/* Main content area */
+.app-main {
+  flex: 1;
+  padding: var(--muji-space-xl) var(--muji-space-lg);
+  background-color: var(--muji-bg-secondary);
+}
+
+/* Footer - understated */
+.app-footer {
+  padding: var(--muji-space-md) var(--muji-space-lg);
+  background-color: var(--muji-bg-card);
+  border-top: 1px solid var(--muji-border-subtle);
+  font-size: 0.8rem;
+  color: var(--muji-text-secondary);
+}
+
+/* ========================================
+   Connection Status
+   ======================================== */
+
+.connection-status {
+  display: inline-flex;
+  gap: var(--muji-space-xs);
+  align-items: baseline;
+  color: var(--muji-text-muted);
+}
+
+.connection-status__label {
+  text-transform: uppercase;
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  opacity: 0.85;
+  color: var(--muji-text-secondary);
+}
+
+.connection-status__value {
+  font-variant-numeric: tabular-nums;
+  color: var(--muji-text-primary);
+}
+
+/* Status indicators */
+.connection-status[data-status="connected"] .connection-status__value {
+  color: #7A8B6E;
+}
+
+.connection-status[data-status="disconnected"] .connection-status__value {
+  color: #B87070;
+}
+
+.connection-status[data-status="connecting"] .connection-status__value {
+  color: var(--muji-accent-wood);
+}
+
+/* ========================================
+   Mixer Shell & Stream
+   ======================================== */
+
+.mixer-shell {
+  max-width: 64rem;
+  margin-inline: auto;
+}
+
+/* Cards - subtle separation through spacing, not borders */
+.mixer-stream {
+  background-color: var(--muji-bg-card);
+  border-radius: var(--muji-radius-md);
+  border: none;
+  padding: var(--muji-space-xl);
+  box-shadow: var(--muji-shadow-sm);
+}
+
+.mixer-placeholder {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--muji-text-placeholder);
+  text-align: center;
+  padding: var(--muji-space-xxl) 0;
+}
+
+/* ========================================
+   Mixer Controls
+   ======================================== */
+
+/* Control card/container */
+.mixer-control {
+  background-color: transparent;
+  border-bottom: 1px solid var(--muji-border-light);
+  padding: var(--muji-space-lg) 0;
+}
+
+.mixer-control:last-child {
+  border-bottom: none;
+}
+
+/* Control header */
+.mixer-control__header {
+  display: flex;
+  align-items: center;
+  gap: var(--muji-space-md);
+  margin-bottom: var(--muji-space-md);
+}
+
+.mixer-control__name {
+  font-size: 0.9rem;
+  font-weight: 400;
+  color: var(--muji-text-primary);
+  letter-spacing: 0.01em;
+}
+
+.mixer-control__type {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muji-text-muted);
+  background-color: var(--muji-bg-tertiary);
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--muji-radius-sm);
+}
+
+/* ========================================
+   Volume Controls
+   ======================================== */
+
+.mixer-control__volume-container {
+  display: flex;
+  align-items: center;
+  gap: var(--muji-space-md);
+}
+
+/* Volume slider - natural/neutral colors */
+.mixer-control__volume {
+  flex: 1;
+  height: 6px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--muji-border-subtle);
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.mixer-control__volume::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  background-color: var(--muji-bg-card);
+  border: 2px solid var(--muji-accent-wood);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: var(--muji-shadow-sm);
+  transition: transform 150ms ease, box-shadow 150ms ease;
+}
+
+.mixer-control__volume::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+  box-shadow: var(--muji-shadow-md);
+}
+
+.mixer-control__volume::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  background-color: var(--muji-bg-card);
+  border: 2px solid var(--muji-accent-wood);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: var(--muji-shadow-sm);
+  transition: transform 150ms ease, box-shadow 150ms ease;
+}
+
+.mixer-control__volume::-moz-range-thumb:hover {
+  transform: scale(1.1);
+}
+
+/* Volume value display */
+.mixer-control__volume-value {
+  font-family: var(--muji-font-mono);
+  font-size: 0.8rem;
+  color: var(--muji-text-secondary);
+  min-width: 3rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ========================================
+   Toggle Buttons (Mute/Unmute)
+   ======================================== */
+
+.mixer-control__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.8rem;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  color: var(--muji-text-secondary);
+  background-color: transparent;
+  border: 1px solid var(--muji-border-medium);
+  border-radius: var(--muji-radius-sm);
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.mixer-control__toggle:hover {
+  background-color: var(--muji-bg-hover);
+  border-color: var(--muji-accent-wood);
+  color: var(--muji-text-primary);
+}
+
+.mixer-control__toggle:active {
+  background-color: var(--muji-bg-active);
+}
+
+.mixer-control__toggle[data-state="muted"] {
+  background-color: var(--muji-bg-tertiary);
+  border-color: var(--muji-accent-stone);
+  color: var(--muji-text-muted);
+}
+
+.mixer-control__toggle[data-state="muted"]:hover {
+  background-color: var(--muji-bg-hover);
+}
+
+/* Toggle icon */
+.mixer-control__toggle-icon {
+  width: 14px;
+  height: 14px;
+  opacity: 0.7;
+}
+
+/* ========================================
+   Buttons
+   ======================================== */
+
+button,
+.mixer-btn {
+  padding: 0.6rem 1.25rem;
+  font-size: 0.85rem;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  color: var(--muji-text-primary);
+  background-color: var(--muji-bg-card);
+  border: 1px solid var(--muji-border-medium);
+  border-radius: var(--muji-radius-sm);
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+button:hover,
+.mixer-btn:hover {
+  background-color: var(--muji-bg-hover);
+  border-color: var(--muji-accent-wood);
+}
+
+button:active,
+.mixer-btn:active {
+  background-color: var(--muji-bg-active);
+}
+
+/* Primary action button */
+.mixer-btn--primary {
+  background-color: var(--muji-text-primary);
+  color: var(--muji-bg-card);
+  border-color: var(--muji-text-primary);
+}
+
+.mixer-btn--primary:hover {
+  background-color: #4a4a4a;
+  border-color: #4a4a4a;
+}
+
+/* ========================================
+   Form Elements
+   ======================================== */
+
+input[type="text"],
+input[type="number"],
+select,
+textarea {
+  padding: 0.6rem 0.875rem;
+  font-size: 0.9rem;
+  color: var(--muji-text-primary);
+  background-color: var(--muji-bg-card);
+  border: 1px solid var(--muji-border-medium);
+  border-radius: var(--muji-radius-sm);
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+input[type="text"]:hover,
+input[type="number"]:hover,
+select:hover,
+textarea:hover {
+  border-color: var(--muji-accent-stone);
+}
+
+input[type="text"]:focus,
+input[type="number"]:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--muji-accent-wood);
+  box-shadow: 0 0 0 3px rgba(196, 167, 125, 0.15);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--muji-text-placeholder);
+}
+
+/* ========================================
+   Accessibility
+   ======================================== */
+
+/* Skip link */
+.skip-link {
+  position: absolute;
+  left: var(--muji-space-md);
+  top: var(--muji-space-sm);
+  padding: 0.5rem 1rem;
+  background-color: var(--muji-bg-card);
+  color: var(--muji-text-primary);
+  font-size: 0.85rem;
+  text-decoration: none;
+  border-radius: var(--muji-radius-sm);
+  border: 1px solid var(--muji-border-medium);
+  box-shadow: var(--muji-shadow-md);
+  transform: translateY(-150%);
+  transition: transform 200ms ease-out;
+  z-index: 9999;
+}
+
+.skip-link:focus-visible {
+  transform: translateY(0);
+  outline: none;
+  box-shadow: var(--muji-focus-ring);
+}
+
+/* Focus styles - visible but understated */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: none;
+  box-shadow: var(--muji-focus-ring);
+}
+
+/* Selection */
+::selection {
+  background-color: rgba(196, 167, 125, 0.25);
+  color: var(--muji-text-primary);
+}
+
+/* Screen reader only */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ========================================
+   Utility Classes
+   ======================================== */
+
+.muji-text-muted {
+  color: var(--muji-text-muted);
+}
+
+.muji-text-secondary {
+  color: var(--muji-text-secondary);
+}
+
+.muji-border-top {
+  border-top: 1px solid var(--muji-border-subtle);
+}
+
+.muji-border-bottom {
+  border-bottom: 1px solid var(--muji-border-subtle);
+}
+
+/* ========================================
+   Responsive Adjustments
+   ======================================== */
+
+@media (max-width: 640px) {
+  .app-header,
+  .app-footer {
+    padding: var(--muji-space-sm) var(--muji-space-md);
+  }
+  
+  .app-main {
+    padding: var(--muji-space-lg) var(--muji-space-md);
+  }
+  
+  .mixer-stream {
+    padding: var(--muji-space-lg);
+  }
+  
+  .mixer-control {
+    padding: var(--muji-space-md) 0;
+  }
+}
+
+/* ========================================
+   Reduced Motion
+   ======================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ========================================
+   Print Styles
+   ======================================== */
+
+@media print {
+  body {
+    background: white;
+    color: black;
+  }
+  
+  .mixer-stream {
+    box-shadow: none;
+    border: 1px solid #ccc;
+  }
+}

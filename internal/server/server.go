@@ -3,20 +3,80 @@ package server
 import (
 	"context"
 	"fmt"
+	"html/template"
 	"log"
 	"net/http"
+	"path/filepath"
+	"runtime"
 	"time"
 
+	"github.com/user/alsamixer-web/internal/alsa"
 	"github.com/user/alsamixer-web/internal/config"
 	"github.com/user/alsamixer-web/internal/sse"
 )
 
-// Server handles HTTP requests and integrates SSE hub, config, and static file serving.
+// VolumeController defines the minimal mixer operations needed by the HTTP handlers.
+type VolumeController interface {
+	SetVolume(card uint, control string, values []int) error
+}
+
+// Server handles HTTP requests and integrates SSE hub, config, mixer, and static file serving.
 type Server struct {
 	config *config.Config
 	hub    *sse.Hub
 	mux    *http.ServeMux
 	server *http.Server
+	tmpl   *template.Template
+	mixer  VolumeController
+}
+
+type Theme string
+
+const (
+	ThemeTerminal Theme = "terminal"
+	ThemeModern   Theme = "modern"
+	ThemeMuji     Theme = "muji"
+	ThemeMobile   Theme = "mobile"
+	ThemeCreative Theme = "creative"
+)
+
+const defaultTheme = ThemeTerminal
+
+var allowedThemes = map[Theme]struct{}{
+	ThemeTerminal: {},
+	ThemeModern:   {},
+	ThemeMuji:     {},
+	ThemeMobile:   {},
+	ThemeCreative: {},
+}
+
+func mustParseTemplates() *template.Template {
+	_, filename, _, ok := runtime.Caller(0)
+	if !ok {
+		panic("unable to determine server source path")
+	}
+
+	rootDir := filepath.Dir(filepath.Dir(filepath.Dir(filename)))
+	templatesDir := filepath.Join(rootDir, "web", "templates")
+
+	return template.Must(template.ParseFiles(
+		filepath.Join(templatesDir, "base.html"),
+		filepath.Join(templatesDir, "index.html"),
+		filepath.Join(templatesDir, "controls.html"),
+	))
+}
+
+func normalizeTheme(raw string) Theme {
+	if raw == "" {
+		return defaultTheme
+	}
+
+	t := Theme(raw)
+	if _, ok := allowedThemes[t]; !ok {
+		return defaultTheme
+	}
+
+	return t
 }
 
 // NewServer creates a new HTTP server instance.
@@ -25,7 +85,10 @@ func NewServer(cfg *config.Config, hub *sse.Hub) *Server {
 		config: cfg,
 		hub:    hub,
 		mux:    http.NewServeMux(),
+		mixer:  alsa.NewMixer(),
 	}
+
+	s.tmpl = mustParseTemplates()
 
 	s.setupRoutes()
 
@@ -43,15 +106,27 @@ func NewServer(cfg *config.Config, hub *sse.Hub) *Server {
 
 // setupRoutes configures all HTTP routes.
 func (s *Server) setupRoutes() {
-	// Root handler - placeholder
 	s.mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {
 			http.NotFound(w, r)
 			return
 		}
-		w.Header().Set("Content-Type", "text/plain")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("alsamixer-web"))
+
+		requestedTheme := r.URL.Query().Get("theme")
+		theme := normalizeTheme(requestedTheme)
+
+		data := struct {
+			Theme string
+		}{
+			Theme: string(theme),
+		}
+
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		if err := s.tmpl.ExecuteTemplate(w, "base", data); err != nil {
+			log.Printf("failed to render index template: %v", err)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
 	})
 
 	// SSE endpoint
@@ -61,16 +136,10 @@ func (s *Server) setupRoutes() {
 	staticFS := http.FileServer(http.Dir("web/static"))
 	s.mux.Handle("/static/", http.StripPrefix("/static/", staticFS))
 
-	// Control endpoints - placeholders returning 501 Not Implemented
-	s.mux.HandleFunc("POST /control/volume", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNotImplemented)
-		w.Write([]byte("Not Implemented"))
-	})
-
-	s.mux.HandleFunc("POST /control/mute", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNotImplemented)
-		w.Write([]byte("Not Implemented"))
-	})
+	// Control endpoints
+	s.mux.HandleFunc("POST /control/volume", s.VolumeHandler)
+	s.mux.HandleFunc("POST /control/mute", s.MuteHandler)
+	s.mux.HandleFunc("POST /control/capture", s.CaptureHandler)
 }
 
 // loggingMiddleware logs all HTTP requests.

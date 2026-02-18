@@ -1,0 +1,909 @@
+/**
+ * Mobile-First Theme for ALSA Mixer Web
+ * Optimized for touch devices with swipe navigation
+ * Pattern: iOS Music app style - clean, focused, tactile
+ */
+
+/* ============================================================
+   CSS Custom Properties - Mobile-first design tokens
+   ============================================================ */
+:root {
+  /* Deep, sophisticated dark palette */
+  --mobile-bg: #0d0d0f;
+  --mobile-bg-secondary: #1a1a1e;
+  --mobile-bg-tertiary: #25252a;
+  --mobile-surface: #2a2a30;
+  --mobile-surface-elevated: #323238;
+  
+  /* Text colors - optimized for readability at arm's length */
+  --mobile-text-primary: #ffffff;
+  --mobile-text-secondary: #a0a0a8;
+  --mobile-text-tertiary: #6e6e78;
+  
+  /* Accent - warm, energetic amber/coral */
+  --mobile-accent: #ff9500;
+  --mobile-accent-soft: rgba(255, 149, 0, 0.15);
+  --mobile-accent-glow: rgba(255, 149, 0, 0.4);
+  
+  /* States */
+  --mobile-success: #34c759;
+  --mobile-warning: #ff3b30;
+  --mobile-focus: #0a84ff;
+  
+  /* Touch targets - WCAG 2.5.5 compliant (44x44px min) */
+  --mobile-touch-target: 44px;
+  --mobile-touch-target-lg: 56px;
+  
+  /* Spacing */
+  --mobile-spacing-xs: 4px;
+  --mobile-spacing-sm: 8px;
+  --mobile-spacing-md: 16px;
+  --mobile-spacing-lg: 24px;
+  --mobile-spacing-xl: 32px;
+  
+  /* Typography - designed for readability at distance */
+  --mobile-font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+  --mobile-font-mono: "SF Mono", SFMono-Regular, ui-monospace, monospace;
+  
+  --mobile-text-sm: 0.875rem;
+  --mobile-text-base: 1rem;
+  --mobile-text-lg: 1.125rem;
+  --mobile-text-xl: 1.25rem;
+  --mobile-text-2xl: 1.5rem;
+  --mobile-text-3xl: 2rem;
+  
+  /* Border radius - soft, modern */
+  --mobile-radius-sm: 8px;
+  --mobile-radius-md: 12px;
+  --mobile-radius-lg: 16px;
+  --mobile-radius-xl: 24px;
+  --mobile-radius-full: 9999px;
+  
+  /* Shadows for depth */
+  --mobile-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --mobile-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --mobile-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+  
+  /* Transitions */
+  --mobile-transition-fast: 150ms ease-out;
+  --mobile-transition-base: 250ms ease-out;
+  --mobile-transition-slow: 350ms ease-out;
+  
+  /* Pagination */
+  --mobile-pagination-dot-size: 8px;
+  --mobile-pagination-dot-active: 24px;
+}
+
+/* ============================================================
+   Base Reset and Typography
+   ============================================================ */
+
+body {
+  font-family: var(--mobile-font);
+  font-size: var(--mobile-text-base);
+  line-height: 1.47059;
+  background-color: var(--mobile-bg);
+  color: var(--mobile-text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Prevent pull-to-refresh and overscroll on mobile */
+  overscroll-behavior-y: none;
+  /* Prevent text selection during swipe gestures */
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Re-enable text selection for readable content */
+.mixer-control__label,
+.mixer-control__value,
+.app-title {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/* ============================================================
+   App Shell - Fixed header, scrollable content, fixed bottom nav
+   ============================================================ */
+
+.app-shell {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  grid-template-areas:
+    "header"
+    "main"
+    "footer";
+  min-height: 100vh;
+  min-height: 100dvh; /* Dynamic viewport height for mobile */
+  background-color: var(--mobile-bg);
+}
+
+/* Header - minimal, clean */
+.app-header {
+  grid-area: header;
+  padding: var(--mobile-spacing-md) var(--mobile-spacing-lg);
+  background: linear-gradient(180deg, var(--mobile-bg) 0%, var(--mobile-bg-secondary) 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.app-title {
+  font-size: var(--mobile-text-xl);
+  font-weight: 700;
+  letter-spacing: -0.022em;
+  margin: 0;
+  text-transform: none;
+  text-align: center;
+  color: var(--mobile-text-primary);
+}
+
+/* Main content area */
+.app-main {
+  grid-area: main;
+  padding: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Footer - compact status bar */
+.app-footer {
+  grid-area: footer;
+  padding: var(--mobile-spacing-sm) var(--mobile-spacing-lg);
+  background-color: var(--mobile-bg-secondary);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: var(--mobile-text-sm);
+}
+
+/* ============================================================
+   Connection Status
+   ============================================================ */
+
+.connection-status {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--mobile-spacing-sm);
+  color: var(--mobile-text-secondary);
+}
+
+.connection-status__label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 1;
+  color: var(--mobile-text-tertiary);
+}
+
+.connection-status__value {
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.connection-status__value::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: var(--mobile-radius-full);
+  background-color: var(--mobile-accent);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.9); }
+}
+
+/* ============================================================
+   Mixer Shell - Full width, no max-width constraint on mobile
+   ============================================================ */
+
+.mixer-shell {
+  max-width: none;
+  margin-inline: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.mixer-stream {
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  background-color: transparent;
+  flex: 1;
+  overflow: hidden;
+}
+
+.mixer-placeholder {
+  color: var(--mobile-text-secondary);
+  text-align: center;
+  padding: var(--mobile-spacing-xl);
+  margin: 0;
+  font-size: var(--mobile-text-lg);
+}
+
+/* ============================================================
+   Mixer Cards - Minimal header, focus on controls
+   ============================================================ */
+
+.mixer-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.mixer-card__header {
+  padding: var(--mobile-spacing-md) var(--mobile-spacing-lg);
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.mixer-card__title {
+  font-size: var(--mobile-text-sm);
+  font-weight: 600;
+  color: var(--mobile-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 0;
+}
+
+.mixer-card__description {
+  font-size: var(--mobile-text-sm);
+  color: var(--mobile-text-tertiary);
+  margin: var(--mobile-spacing-xs) 0 0 0;
+}
+
+/* ============================================================
+   Mobile Carousel - Single control per view with swipe
+   ============================================================ */
+
+.mixer-card__controls {
+  display: flex;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+  gap: 0;
+  padding: 0;
+  flex: 1;
+  align-items: stretch;
+}
+
+/* Hide scrollbar on WebKit */
+.mixer-card__controls::-webkit-scrollbar {
+  display: none;
+}
+
+.mixer-control {
+  flex: 0 0 100%;
+  width: 100%;
+  min-width: 100%;
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
+  padding: var(--mobile-spacing-lg);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background-color: var(--mobile-bg);
+}
+
+/* ============================================================
+   Control Header - Large, readable at arm's length
+   ============================================================ */
+
+.mixer-control__header {
+  text-align: center;
+  margin-bottom: var(--mobile-spacing-xl);
+  padding: 0 var(--mobile-spacing-md);
+}
+
+.mixer-control__label {
+  font-size: var(--mobile-text-2xl);
+  font-weight: 700;
+  letter-spacing: -0.021em;
+  margin: 0 0 var(--mobile-spacing-xs) 0;
+  color: var(--mobile-text-primary);
+  line-height: 1.2;
+}
+
+.mixer-control__description {
+  font-size: var(--mobile-text-base);
+  color: var(--mobile-text-secondary);
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* ============================================================
+   Control Body - Centered content
+   ============================================================ */
+
+.mixer-control__body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--mobile-spacing-xl);
+  width: 100%;
+  max-width: 320px;
+}
+
+/* ============================================================
+   Vertical Volume Slider - Large, tactile
+   ============================================================ */
+
+.mixer-control__volume {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--mobile-spacing-md);
+  width: 100%;
+  cursor: pointer;
+  position: relative;
+  padding: var(--mobile-spacing-md) 0;
+}
+
+/* Vertical track container */
+.mixer-control__volume-track {
+  width: 72px;
+  height: 240px;
+  background-color: var(--mobile-surface);
+  border-radius: var(--mobile-radius-full);
+  position: relative;
+  overflow: hidden;
+  box-shadow: 
+    inset 0 2px 4px rgba(0, 0, 0, 0.4),
+    0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* Vertical fill - grows from bottom */
+.mixer-control__volume-fill {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--volume-percent, 50%);
+  background: linear-gradient(
+    180deg,
+    var(--mobile-accent) 0%,
+    #ffaa33 100%
+  );
+  border-radius: var(--mobile-radius-full);
+  transition: height var(--mobile-transition-fast);
+  box-shadow: 
+    0 0 20px var(--mobile-accent-glow),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Touch handle indicator */
+.mixer-control__volume-fill::after {
+  content: "";
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 4px;
+  background-color: rgba(255, 255, 255, 0.4);
+  border-radius: var(--mobile-radius-full);
+}
+
+/* Volume value display */
+.mixer-control__value {
+  font-size: var(--mobile-text-3xl);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--mobile-text-primary);
+  letter-spacing: -0.024em;
+  min-width: 80px;
+  text-align: center;
+}
+
+.mixer-control__value::after {
+  content: "%";
+  font-size: var(--mobile-text-lg);
+  font-weight: 500;
+  color: var(--mobile-text-secondary);
+  margin-left: 2px;
+}
+
+/* Volume slider active state */
+.mixer-control__volume:active .mixer-control__volume-track {
+  transform: scale(0.98);
+}
+
+/* ============================================================
+   Toggle Buttons - Large touch targets
+   ============================================================ */
+
+.mixer-control__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--mobile-spacing-sm);
+  width: 100%;
+  min-height: var(--mobile-touch-target-lg);
+  padding: var(--mobile-spacing-sm) var(--mobile-spacing-lg);
+  font-family: var(--mobile-font);
+  font-size: var(--mobile-text-lg);
+  font-weight: 600;
+  border: none;
+  border-radius: var(--mobile-radius-lg);
+  cursor: pointer;
+  transition: 
+    background-color var(--mobile-transition-fast),
+    transform var(--mobile-transition-fast),
+    box-shadow var(--mobile-transition-fast);
+  touch-action: manipulation;
+}
+
+/* Default/off state */
+.mixer-control__toggle {
+  background-color: var(--mobile-surface);
+  color: var(--mobile-text-secondary);
+  box-shadow: 
+    0 1px 0 rgba(255, 255, 255, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.02);
+}
+
+/* Active/on state */
+.mixer-control__toggle[aria-checked="true"] {
+  background-color: var(--mobile-accent);
+  color: #000000;
+  box-shadow: 
+    0 4px 12px var(--mobile-accent-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+/* Icon for toggle */
+.mixer-control__toggle::before {
+  font-size: var(--mobile-text-xl);
+  width: 24px;
+  text-align: center;
+}
+
+/* Mute toggle icon */
+.mixer-control__toggle--mute::before {
+  content: "🔊";
+}
+
+.mixer-control__toggle--mute[aria-checked="true"]::before {
+  content: "🔇";
+}
+
+/* Capture toggle icon */
+.mixer-control__toggle--capture::before {
+  content: "🎙️";
+}
+
+.mixer-control__toggle--capture[aria-checked="true"]::before {
+  content: "📡";
+}
+
+/* Toggle label */
+.mixer-control__toggle-label {
+  color: inherit;
+}
+
+/* Active/touch feedback */
+.mixer-control__toggle:active {
+  transform: scale(0.96);
+}
+
+.mixer-control__toggle[aria-checked="true"]:active {
+  transform: scale(0.96);
+  box-shadow: 
+    0 2px 8px var(--mobile-accent-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+/* ============================================================
+   Pagination Dots - Swipe indicator
+   ============================================================ */
+
+.mixer-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--mobile-spacing-sm);
+  padding: var(--mobile-spacing-md) var(--mobile-spacing-lg);
+  flex-shrink: 0;
+}
+
+.mixer-pagination__dot {
+  width: var(--mobile-pagination-dot-size);
+  height: var(--mobile-pagination-dot-size);
+  border-radius: var(--mobile-radius-full);
+  background-color: var(--mobile-surface);
+  transition: 
+    width var(--mobile-transition-base),
+    background-color var(--mobile-transition-base);
+  cursor: pointer;
+  border: none;
+  padding: 0;
+  min-height: auto;
+}
+
+.mixer-pagination__dot--active {
+  width: var(--mobile-pagination-dot-active);
+  background-color: var(--mobile-accent);
+}
+
+/* ============================================================
+   Navigation Arrows - Optional, for non-touch devices
+   ============================================================ */
+
+.mixer-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 var(--mobile-spacing-md);
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  transform: translateY(-50%);
+  pointer-events: none;
+  z-index: 10;
+}
+
+.mixer-nav__btn {
+  width: var(--mobile-touch-target);
+  height: var(--mobile-touch-target);
+  border-radius: var(--mobile-radius-full);
+  background-color: var(--mobile-surface-elevated);
+  border: none;
+  color: var(--mobile-text-primary);
+  font-size: var(--mobile-text-xl);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+  transition: 
+    background-color var(--mobile-transition-fast),
+    transform var(--mobile-transition-fast);
+  box-shadow: var(--mobile-shadow-md);
+}
+
+.mixer-nav__btn:hover {
+  background-color: var(--mobile-accent);
+  color: #000000;
+}
+
+.mixer-nav__btn:active {
+  transform: scale(0.9);
+}
+
+.mixer-nav__btn--prev::before {
+  content: "‹";
+}
+
+.mixer-nav__btn--next::before {
+  content: "›";
+}
+
+/* Hide nav on very small screens */
+@media (max-width: 360px) {
+  .mixer-nav {
+    display: none;
+  }
+}
+
+/* ============================================================
+   Skip Link - Mobile optimized
+   ============================================================ */
+
+.skip-link {
+  position: absolute;
+  left: 50%;
+  top: var(--mobile-spacing-md);
+  transform: translate(-50%, -200%);
+  padding: var(--mobile-spacing-sm) var(--mobile-spacing-md);
+  border-radius: var(--mobile-radius-lg);
+  background: var(--mobile-accent);
+  color: #000000;
+  font-size: var(--mobile-text-base);
+  font-weight: 600;
+  text-decoration: none;
+  transition: transform var(--mobile-transition-base);
+  z-index: 1000;
+  box-shadow: var(--mobile-shadow-lg);
+}
+
+.skip-link:focus-visible {
+  transform: translate(-50%, 0);
+  outline: none;
+}
+
+/* ============================================================
+   Focus Styles - High visibility
+   ============================================================ */
+
+:where(a, button, input, textarea, select, [role="button"], [role="slider"], [role="switch"]):focus-visible {
+  outline: 3px solid var(--mobile-focus);
+  outline-offset: 2px;
+}
+
+.mixer-control__volume:focus-visible {
+  outline: 3px solid var(--mobile-focus);
+  outline-offset: 4px;
+  border-radius: var(--mobile-radius-md);
+}
+
+.mixer-control__toggle:focus-visible {
+  outline: 3px solid var(--mobile-focus);
+  outline-offset: 2px;
+}
+
+.mixer-nav__btn:focus-visible {
+  outline: 3px solid var(--mobile-focus);
+  outline-offset: 2px;
+}
+
+/* ============================================================
+   Selection
+   ============================================================ */
+
+::selection {
+  background-color: var(--mobile-accent-soft);
+  color: var(--mobile-text-primary);
+}
+
+/* ============================================================
+   Screen Reader Only
+   ============================================================ */
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ============================================================
+   RESPONSIVE: Tablet (show 2 controls)
+   ============================================================ */
+
+@media (min-width: 640px) {
+  .mixer-control {
+    flex: 0 0 50%;
+    min-width: 50%;
+  }
+  
+  .mixer-control__volume-track {
+    height: 280px;
+  }
+}
+
+/* ============================================================
+   RESPONSIVE: Desktop (show all controls, horizontal volume)
+   ============================================================ */
+
+@media (min-width: 1024px) {
+  /* Reset to grid layout */
+  .mixer-card__controls {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: var(--mobile-spacing-lg);
+    padding: var(--mobile-spacing-lg);
+    overflow: visible;
+    scroll-snap-type: none;
+  }
+  
+  .mixer-control {
+    flex: none;
+    min-width: auto;
+    scroll-snap-align: none;
+    background-color: var(--mobile-bg-secondary);
+    border-radius: var(--mobile-radius-lg);
+    padding: var(--mobile-spacing-xl);
+  }
+  
+  /* Horizontal volume slider on desktop */
+  .mixer-control__volume {
+    flex-direction: row;
+    width: 100%;
+  }
+  
+  .mixer-control__volume-track {
+    width: 100%;
+    height: 48px;
+    flex: 1;
+  }
+  
+  .mixer-control__volume-fill {
+    bottom: auto;
+    top: 0;
+    width: var(--volume-percent, 50%);
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      var(--mobile-accent) 0%,
+      #ffaa33 100%
+    );
+  }
+  
+  .mixer-control__volume-fill::after {
+    top: 50%;
+    left: auto;
+    right: 12px;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 24px;
+  }
+  
+  .mixer-control__value {
+    min-width: 64px;
+    font-size: var(--mobile-text-xl);
+  }
+  
+  /* Hide pagination on desktop */
+  .mixer-pagination,
+  .mixer-nav {
+    display: none;
+  }
+  
+  /* Wider app shell */
+  .mixer-shell {
+    max-width: 1200px;
+    margin-inline: auto;
+  }
+}
+
+/* ============================================================
+   Reduced Motion Support
+   ============================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  
+  .connection-status__value::before {
+    animation: none;
+  }
+}
+
+/* ============================================================
+   High Contrast Mode Support
+   ============================================================ */
+
+@media (forced-colors: active) {
+  :root {
+    --mobile-bg: Canvas;
+    --mobile-bg-secondary: Canvas;
+    --mobile-surface: ButtonFace;
+    --mobile-text-primary: CanvasText;
+    --mobile-accent: Highlight;
+  }
+  
+  .mixer-control__volume-track,
+  .mixer-control__toggle {
+    border: 1px solid CanvasText;
+  }
+  
+  .mixer-control__volume-fill {
+    background: Highlight;
+  }
+  
+  .mixer-control__toggle[aria-checked="true"] {
+    background: Highlight;
+    color: HighlightText;
+  }
+  
+  .mixer-pagination__dot--active {
+    background: Highlight;
+  }
+}
+
+/* ============================================================
+   Dark Mode (default, but explicit for system preference)
+   ============================================================ */
+
+@media (prefers-color-scheme: dark) {
+  /* Already dark by default */
+}
+
+/* Light mode variant */
+@media (prefers-color-scheme: light) {
+  :root {
+    --mobile-bg: #f5f5f7;
+    --mobile-bg-secondary: #ffffff;
+    --mobile-bg-tertiary: #e8e8ed;
+    --mobile-surface: #e5e5ea;
+    --mobile-surface-elevated: #ffffff;
+    
+    --mobile-text-primary: #000000;
+    --mobile-text-secondary: #6e6e73;
+    --mobile-text-tertiary: #8e8e93;
+    
+    --mobile-accent: #ff9500;
+    --mobile-accent-soft: rgba(255, 149, 0, 0.12);
+    --mobile-accent-glow: rgba(255, 149, 0, 0.25);
+    
+    --mobile-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.1);
+    --mobile-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.15);
+    --mobile-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.2);
+  }
+  
+  .app-header {
+    background: linear-gradient(180deg, var(--mobile-bg) 0%, var(--mobile-bg-secondary) 100%);
+    border-bottom-color: rgba(0, 0, 0, 0.08);
+  }
+  
+  .app-footer {
+    border-top-color: rgba(0, 0, 0, 0.08);
+  }
+  
+  .mixer-control__volume-track {
+    box-shadow: 
+      inset 0 2px 4px rgba(0, 0, 0, 0.1),
+      0 1px 0 rgba(255, 255, 255, 0.8);
+  }
+  
+  .mixer-control__toggle {
+    box-shadow: 
+      0 1px 0 rgba(255, 255, 255, 0.8),
+      inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  }
+  
+  .mixer-control__toggle[aria-checked="true"] {
+    color: #ffffff;
+  }
+  
+  .mixer-nav__btn {
+    background-color: var(--mobile-surface-elevated);
+    box-shadow: 
+      0 2px 8px rgba(0, 0, 0, 0.15),
+      0 1px 0 rgba(255, 255, 255, 0.8);
+  }
+}
+
+/* ============================================================
+   Print Styles
+   ============================================================ */
+
+@media print {
+  body {
+    background-color: white;
+    color: black;
+    user-select: text;
+  }
+  
+  .mixer-card__controls {
+    display: block;
+    overflow: visible;
+  }
+  
+  .mixer-control {
+    page-break-inside: avoid;
+    margin-bottom: 1rem;
+    border: 1px solid black;
+  }
+  
+  .mixer-pagination,
+  .mixer-nav,
+  .app-footer {
+    display: none;
+  }
+}
