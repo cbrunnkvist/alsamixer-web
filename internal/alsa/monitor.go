@@ -2,8 +2,12 @@ package alsa
 
 import (
 	"log"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/fsnotify/fsnotify"
 )
 
 // Hub interface for broadcasting events
@@ -14,13 +18,15 @@ type Hub interface {
 
 // Monitor watches for ALSA mixer state changes and broadcasts them via SSE
 type Monitor struct {
-	mixer     *Mixer
-	hub       Hub
-	ticker    *time.Ticker
-	stopCh    chan struct{}
-	wg        sync.WaitGroup
-	lastState *StateSnapshot
-	mu        sync.Mutex
+	mixer       *Mixer
+	hub         Hub
+	ticker      *time.Ticker
+	stopCh      chan struct{}
+	wg          sync.WaitGroup
+	lastState   *StateSnapshot
+	mu          sync.Mutex
+	watcher     *fsnotify.Watcher
+	configPaths []string
 }
 
 // StateSnapshot represents a snapshot of ALSA mixer state for comparison
@@ -41,23 +47,52 @@ type ControlState struct {
 
 // NewMonitor creates a new ALSA monitor instance
 func NewMonitor(mixer *Mixer, hub Hub) *Monitor {
-	return &Monitor{
-		mixer:  mixer,
-		hub:    hub,
-		stopCh: make(chan struct{}),
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		log.Fatalf("failed to create file watcher: %v", err)
 	}
+
+	monitor := &Monitor{
+		mixer:   mixer,
+		hub:     hub,
+		stopCh:  make(chan struct{}),
+		watcher: watcher,
+		configPaths: []string{
+			filepath.Join(os.Getenv("HOME"), ".asoundrc"),
+			"/etc/asound.conf",
+			// Add more paths if needed, e.g., for /etc/asound.conf.d/
+		},
+	}
+
+	// Add config files to watcher
+	for _, path := range monitor.configPaths {
+		if _, err := os.Stat(path); err == nil {
+			if err := monitor.watcher.Add(path); err != nil {
+				log.Printf("failed to watch %s: %v", path, err)
+			}
+		} else if os.IsNotExist(err) {
+			log.Printf("config file not found: %s, skipping watch", path)
+		} else {
+			log.Printf("error stating config file %s: %v", path, err)
+		}
+	}
+
+	return monitor
 }
 
 // Start begins monitoring ALSA state changes
 func (m *Monitor) Start() {
 	m.wg.Add(1)
 	go m.monitorLoop()
+	m.wg.Add(1)
+	go m.configWatcherLoop()
 	log.Println("ALSA monitor started")
 }
 
 // Stop halts the monitoring loop
 func (m *Monitor) Stop() {
 	close(m.stopCh)
+	m.watcher.Close()
 	m.wg.Wait()
 	log.Println("ALSA monitor stopped")
 }
@@ -95,6 +130,36 @@ func (m *Monitor) monitorLoop() {
 				m.mu.Unlock()
 			}
 
+		case <-m.stopCh:
+			return
+		}
+	}
+}
+
+// configWatcherLoop watches ALSA config files for changes and broadcasts an SSE event
+func (m *Monitor) configWatcherLoop() {
+	defer m.wg.Done()
+
+	for {
+		select {
+		case event, ok := <-m.watcher.Events:
+			if !ok {
+				return
+			}
+			if event.Op&fsnotify.Write == fsnotify.Write || event.Op&fsnotify.Create == fsnotify.Create {
+				log.Printf("ALSA config file changed: %s", event.Name)
+				if m.hub != nil {
+					m.hub.Broadcast(map[string]interface{}{
+						"type": "config-change",
+						"path": event.Name,
+					})
+				}
+			}
+		case err, ok := <-m.watcher.Errors:
+			if !ok {
+				return
+			}
+			log.Printf("error watching config files: %v", err)
 		case <-m.stopCh:
 			return
 		}

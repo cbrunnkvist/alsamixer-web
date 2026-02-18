@@ -10,8 +10,8 @@ import (
 
 	"github.com/user/alsamixer-web/internal/alsa"
 	"github.com/user/alsamixer-web/internal/config"
-	"github.com/user/alsamixer-web/internal/embed"
 	"github.com/user/alsamixer-web/internal/sse"
+	"github.com/user/alsamixer-web/web"
 )
 
 // VolumeController defines the minimal mixer operations needed by the HTTP handlers.
@@ -21,12 +21,13 @@ type VolumeController interface {
 
 // Server handles HTTP requests and integrates SSE hub, config, mixer, and static file serving.
 type Server struct {
-	config *config.Config
-	hub    *sse.Hub
-	mux    *http.ServeMux
-	server *http.Server
-	tmpl   *template.Template
-	mixer  VolumeController
+	config  *config.Config
+	hub     *sse.Hub
+	mux     *http.ServeMux
+	server  *http.Server
+	tmpl    *template.Template
+	mixer   VolumeController
+	monitor *alsa.Monitor
 }
 
 type Theme string
@@ -51,7 +52,7 @@ var allowedThemes = map[Theme]struct{}{
 
 func mustParseTemplates() *template.Template {
 	// Use embed.TemplateFS() to get the embedded filesystem
-	return template.Must(template.ParseFS(embed.TemplateFS(), "*.html"))
+	return template.Must(template.ParseFS(web.TemplateFS(), "base.html", "index.html", "controls.html"))
 }
 
 func normalizeTheme(raw string) Theme {
@@ -76,6 +77,7 @@ func NewServer(cfg *config.Config, hub *sse.Hub) *Server {
 		mixer:  alsa.NewMixer(),
 	}
 
+	s.monitor = alsa.NewMonitor(s.mixer, s.hub)
 	s.tmpl = mustParseTemplates()
 
 	s.setupRoutes()
@@ -126,7 +128,7 @@ func (s *Server) setupRoutes() {
 	s.mux.Handle("/events", s.hub)
 
 	// Static file server (embedded)
-	staticFS := http.FileServer(http.FS(embed.StaticFS()))
+	staticFS := http.FileServer(http.FS(web.StaticFS()))
 	s.mux.Handle("/static/", http.StripPrefix("/static/", staticFS))
 
 	// Control endpoints
@@ -186,11 +188,13 @@ func (rw *responseWriter) WriteHeader(code int) {
 // Start begins the HTTP server.
 func (s *Server) Start() error {
 	log.Printf("Starting server on %s", s.server.Addr)
+	s.monitor.Start()
 	return s.server.ListenAndServe()
 }
 
 // Stop gracefully shuts down the HTTP server.
 func (s *Server) Stop(ctx context.Context) error {
 	log.Println("Shutting down server...")
+	s.monitor.Stop()
 	return s.server.Shutdown(ctx)
 }

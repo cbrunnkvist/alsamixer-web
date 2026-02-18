@@ -1,4 +1,6 @@
 // Package alsa provides an abstraction layer for ALSA mixer operations.
+//go:build linux
+
 package alsa
 
 import (

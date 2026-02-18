@@ -1,7 +1,8 @@
-FROM golang:1.21 AS builder
+FROM golang:1.23 AS builder
 WORKDIR /app
 COPY . .
-RUN go build -o alsamixer-web ./cmd/alsamixer-web
+RUN apt-get update && apt-get install -y libasound2-dev && \
+    go build -o alsamixer-web ./cmd/alsamixer-web
 
 FROM alpine:latest
 RUN adduser -D -u 1000 alsamixer

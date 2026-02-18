@@ -1,14 +1,14 @@
-package embed
+package web
 
 import (
 	"embed"
 	"net/http"
 )
 
-//go:embed ../../web/static/.*
+//go:embed static/...
 var staticFS embed.FS
 
-//go:embed ../../web/templates/*
+//go:embed templates/...
 var templateFS embed.FS
 
 // StaticFileServer returns an http.Handler that serves static files from the embedded filesystem.
