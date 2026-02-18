@@ -285,7 +285,7 @@ Max Concurrent: 6 (Wave 1 & 3)
 
 ---
 
-- [ ] 2. ALSA Mixer Abstraction Layer
+- [x] 2. ALSA Mixer Abstraction Layer
 
   **What to do**:
   - Install dependency: `go get github.com/gen2brain/alsa`
@@ -345,7 +345,7 @@ Max Concurrent: 6 (Wave 1 & 3)
 
 ---
 
-- [ ] 3. SSE Broadcast Hub Implementation
+- [x] 3. SSE Broadcast Hub Implementation
 
   **What to do**:
   - Create `internal/sse/hub.go` with:
@@ -405,7 +405,7 @@ Max Concurrent: 6 (Wave 1 & 3)
 
 ---
 
-- [ ] 4. File Watcher for asound.conf Changes
+- [x] 4. File Watcher for asound.conf Changes
 
   **What to do**:
   - Create `internal/config/watcher.go` with:
@@ -524,7 +524,7 @@ Max Concurrent: 6 (Wave 1 & 3)
 
 ---
 
-- [ ] 6. Configuration (Port, Env Vars, CLI Flags)
+- [x] 6. Configuration (Port, Env Vars, CLI Flags)
 
   **What to do**:
   - Create `internal/config/config.go` with:
