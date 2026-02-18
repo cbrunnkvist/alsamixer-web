@@ -1,0 +1,125 @@
+/* Accessibility utilities and global a11y behaviors.
+ *
+ * This file is intentionally minimal and theme-agnostic.
+ * It focuses on screen reader support, keyboard focus, high
+ * contrast modes, and reduced motion preferences.
+ */
+
+/* Screen reader only content */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  border: 0;
+  white-space: nowrap;
+}
+
+/* Screen-reader-only but focusable (e.g. skip links) */
+.sr-only-focusable:active,
+.sr-only-focusable:focus,
+.sr-only-focusable:focus-visible {
+  position: static;
+  width: auto;
+  height: auto;
+  margin: 0;
+  overflow: visible;
+  clip: auto;
+  clip-path: none;
+  white-space: normal;
+}
+
+/* Focus styles for keyboard navigation */
+:root {
+  --focus-ring-color: #ffbf3b;
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+}
+
+:where(a,
+button,
+input,
+textarea,
+select,
+[role="button"],
+[role="slider"],
+[role="switch"])::moz-focus-inner {
+  border: 0;
+}
+
+:where(a,
+button,
+input,
+textarea,
+select,
+[role="button"],
+[role="slider"],
+[role="switch"]):focus {
+  outline: none;
+}
+
+:where(a,
+button,
+input,
+textarea,
+select,
+[role="button"],
+[role="slider"],
+[role="switch"]):focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* ARIA live regions */
+[aria-live] {
+  /* Live regions may be visually hidden but must remain in the DOM.
+   * Additional visual styling can be layered by themes later.
+   */
+}
+
+#mixer-live-region[aria-live] {
+  /* Explicit hook for the mixer announcement region */
+}
+
+/* High contrast / forced colors mode support */
+@media (forced-colors: active) {
+  :root {
+    --focus-ring-color: Highlight;
+  }
+
+  :where(a,
+  button,
+  input,
+  textarea,
+  select,
+  [role="button"],
+  [role="slider"],
+  [role="switch"]):focus-visible {
+    outline-style: solid;
+    outline-color: var(--focus-ring-color);
+  }
+
+  .mixer-control__toggle,
+  .mixer-control__volume {
+    forced-color-adjust: none;
+    background-color: Canvas;
+    color: CanvasText;
+    border: 1px solid CanvasText;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

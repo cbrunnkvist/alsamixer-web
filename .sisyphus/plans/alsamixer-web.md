@@ -463,7 +463,7 @@ Max Concurrent: 6 (Wave 1 & 3)
 
 ---
 
-- [ ] 5. HTTP Server Scaffolding and Static File Serving
+- [x] 5. HTTP Server Scaffolding and Static File Serving
 
   **What to do**:
   - Create `internal/server/server.go` with:

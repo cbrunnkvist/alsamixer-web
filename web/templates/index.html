@@ -1,0 +1,21 @@
+{{ define "title" }}ALSA Mixer Web{{ end }}
+
+{{ define "header_title" }}ALSA Mixer Web{{ end }}
+
+{{ define "content" }}
+  <section class="mixer-shell" aria-labelledby="mixer-heading">
+    <h2 id="mixer-heading" class="sr-only">Mixer controls</h2>
+
+    <div
+      class="mixer-stream"
+      hx-ext="sse"
+      sse-connect="/events"
+      aria-live="polite"
+      aria-atomic="false"
+    >
+      <p class="mixer-placeholder" role="status" aria-live="polite">
+        Loading mixer controls...
+      </p>
+    </div>
+  </section>
+{{ end }}

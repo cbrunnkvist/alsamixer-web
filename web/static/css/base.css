@@ -1,0 +1,156 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  min-height: 100vh;
+  font-family: "DM Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  background-color: #050608;
+  color: #f4f5f7;
+}
+
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
+  height: auto;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+a {
+  color: inherit;
+}
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+}
+
+.app-header {
+  padding: 0.75rem 1.25rem;
+}
+
+.app-title {
+  margin: 0;
+  font-size: 1.25rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.app-main {
+  flex: 1;
+  padding: 1rem 1.25rem 2rem;
+}
+
+.app-footer {
+  padding: 0.75rem 1.25rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.85rem;
+}
+
+.connection-status {
+  display: inline-flex;
+  gap: 0.5rem;
+  align-items: baseline;
+  color: #c5f3ff;
+}
+
+.connection-status__label {
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  opacity: 0.76;
+}
+
+.connection-status__value {
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * Mixer shell
+ */
+
+.mixer-shell {
+  max-width: 72rem;
+  margin-inline: auto;
+}
+
+.mixer-stream {
+  border-radius: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 1.25rem 1rem;
+}
+
+.mixer-placeholder {
+  margin: 0;
+  font-size: 0.95rem;
+  opacity: 0.85;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: absolute;
+  left: 0.75rem;
+  top: 0.5rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  background: #f4f5f7;
+  color: #050608;
+  font-size: 0.85rem;
+  text-decoration: none;
+  transform: translateY(-150%);
+  transition: transform 160ms ease-out, box-shadow 160ms ease-out;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5);
+}
+
+.skip-link:focus-visible {
+  transform: translateY(0);
+  outline: none;
+  box-shadow: 0 0 0 2px #050608, 0 0 0 4px #35f2ad;
+}
+
+:where(a, button, input, select, textarea, [tabindex])::selection {
+  background: rgba(53, 242, 173, 0.28);
+}
+
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid #35f2ad;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

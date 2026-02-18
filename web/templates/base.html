@@ -1,0 +1,38 @@
+{{ define "base" }}
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ block "title" . }}ALSA Mixer Web{{ end }}</title>
+
+    <link rel="stylesheet" href="/static/css/base.css">
+    <link rel="stylesheet" href="/static/themes/terminal.css">
+
+    <script src="/static/js/htmx.min.js" defer></script>
+    <script src="/static/js/htmx-sse.js" defer></script>
+  </head>
+  <body class="app-shell">
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+
+    <div id="sr-announcer" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
+
+    <header class="app-header" role="banner">
+      <h1 class="app-title">{{ block "header_title" . }}ALSA Mixer Web{{ end }}</h1>
+    </header>
+
+    <main id="main-content" class="app-main" role="main" aria-live="polite" aria-atomic="false">
+      {{ block "content" . }}{{ end }}
+    </main>
+
+    <footer class="app-footer" role="contentinfo">
+      <div class="connection-status" role="status" aria-live="polite" aria-atomic="true">
+        <span class="connection-status__label" id="connection-status-label">Connection</span>
+        <span class="connection-status__value" aria-describedby="connection-status-label" data-connection-state>
+          Connecting to audio mixer
+        </span>
+      </div>
+    </footer>
+  </body>
+</html>
+{{ end }}

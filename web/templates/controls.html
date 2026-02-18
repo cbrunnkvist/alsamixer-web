@@ -1,0 +1,106 @@
+{{/*
+  Mixer controls templates
+
+  These templates are intended to be composed into a base layout
+  using Go's html/template package. The "controls" template renders
+  the main mixer area and iterates over sound cards; the "control"
+  template renders a single mixer control with accessible ARIA
+  attributes for volume sliders and switches.
+*/}}
+
+{{define "controls"}}
+<main id="mixer-main" class="mixer-main" role="main" aria-label="ALSA mixer controls">
+  <section id="mixer-live-region" class="sr-only" aria-live="polite" aria-atomic="true"></section>
+
+  {{range .Cards}}
+  <section class="mixer-card" aria-labelledby="card-{{.ID}}">
+    <header class="mixer-card__header">
+      <h2 id="card-{{.ID}}" class="mixer-card__title">{{.Name}}</h2>
+      {{if .Description}}
+      <p class="mixer-card__description">{{.Description}}</p>
+      {{end}}
+    </header>
+
+    <div class="mixer-card__controls">
+      {{range .Controls}}
+        {{template "control" .}}
+      {{end}}
+    </div>
+  </section>
+  {{end}}
+</main>
+{{end}}
+
+{{define "control"}}
+<article class="mixer-control" data-control-id="{{.ID}}">
+  <header class="mixer-control__header">
+    <h3 class="mixer-control__label">{{.Name}}</h3>
+    {{if .Description}}
+    <p class="mixer-control__description" id="control-desc-{{.ID}}">{{.Description}}</p>
+    {{end}}
+  </header>
+
+  <div class="mixer-control__body">
+    {{/* Volume slider */}}
+    {{if .HasVolume}}
+    <div
+      class="mixer-control__volume"
+      role="slider"
+      tabindex="0"
+      aria-label="{{.VolumeAriaLabel}}"
+      aria-valuemin="{{.VolumeMin}}"
+      aria-valuemax="{{.VolumeMax}}"
+      aria-valuenow="{{.VolumeNow}}"
+      aria-valuetext="{{.VolumeText}}"
+      aria-describedby="volume-help-{{.ID}}"
+      data-control-kind="volume">
+      <div class="mixer-control__volume-track">
+        <div class="mixer-control__volume-fill" aria-hidden="true"></div>
+      </div>
+      <span class="mixer-control__value" aria-hidden="true">{{.VolumeText}}</span>
+    </div>
+    <p id="volume-help-{{.ID}}" class="sr-only">
+      Use left and right arrow keys to adjust the volume for {{.Name}}.
+    </p>
+    {{end}}
+
+    {{/* Mute toggle */}}
+    {{if .HasMute}}
+    <button
+      type="button"
+      class="mixer-control__toggle mixer-control__toggle--mute"
+      role="switch"
+      aria-label="{{.MuteAriaLabel}}"
+      aria-checked="{{if .Muted}}true{{else}}false{{end}}"
+      aria-describedby="mute-help-{{.ID}}"
+      data-control-kind="mute">
+      <span class="sr-only" id="mute-help-{{.ID}}">
+        {{if .Muted}}Mute enabled for {{.Name}}.{{else}}Mute disabled for {{.Name}}.{{end}}
+      </span>
+      <span class="mixer-control__toggle-label" aria-hidden="true">
+        {{if .Muted}}Muted{{else}}Unmuted{{end}}
+      </span>
+    </button>
+    {{end}}
+
+    {{/* Capture toggle */}}
+    {{if .HasCapture}}
+    <button
+      type="button"
+      class="mixer-control__toggle mixer-control__toggle--capture"
+      role="switch"
+      aria-label="{{.CaptureAriaLabel}}"
+      aria-checked="{{if .CaptureActive}}true{{else}}false{{end}}"
+      aria-describedby="capture-help-{{.ID}}"
+      data-control-kind="capture">
+      <span class="sr-only" id="capture-help-{{.ID}}">
+        {{if .CaptureActive}}Capture enabled for {{.Name}}.{{else}}Capture disabled for {{.Name}}.{{end}}
+      </span>
+      <span class="mixer-control__toggle-label" aria-hidden="true">
+        {{if .CaptureActive}}Capture On{{else}}Capture Off{{end}}
+      </span>
+    </button>
+    {{end}}
+  </div>
+</article>
+{{end}}
