@@ -233,7 +233,7 @@ Max Concurrent: 6 (Wave 1 & 3)
 
 ## TODOs
 
-- [ ] 1. Project Structure and Go Module Setup
+- [x] 1. Project Structure and Go Module Setup
 
   **What to do**:
   - Initialize Go module: `go mod init github.com/user/alsamixer-web`
