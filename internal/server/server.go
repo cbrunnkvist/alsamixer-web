@@ -299,6 +299,9 @@ func (s *Server) setupRoutes() {
 	s.mux.HandleFunc("POST /control/volume", s.VolumeHandler)
 	s.mux.HandleFunc("POST /control/mute", s.MuteHandler)
 	s.mux.HandleFunc("POST /control/capture", s.CaptureHandler)
+
+	// Debug endpoint
+	s.mux.HandleFunc("GET /debug/controls", s.DebugControlsHandler)
 }
 
 // loggingMiddleware logs all HTTP requests.
@@ -365,4 +368,33 @@ func (s *Server) Stop(ctx context.Context) error {
 		s.monitor.Stop()
 	}
 	return s.server.Shutdown(ctx)
+}
+
+// DebugControlsHandler returns debug info about ALSA controls
+func (s *Server) DebugControlsHandler(w http.ResponseWriter, r *http.Request) {
+	if s.mixer == nil || !s.mixer.IsOpen() {
+		http.Error(w, "mixer not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	cards, err := s.mixer.ListCards()
+	if err != nil {
+		http.Error(w, fmt.Sprintf("failed to list cards: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/plain")
+	fmt.Fprintf(w, "Cards found: %d\n", len(cards))
+	for _, card := range cards {
+		fmt.Fprintf(w, "\nCard %d: %s\n", card.ID, card.Name)
+		controls, err := s.mixer.ListControls(card.ID)
+		if err != nil {
+			fmt.Fprintf(w, "  Error listing controls: %v\n", err)
+			continue
+		}
+		fmt.Fprintf(w, "  Controls: %d\n", len(controls))
+		for _, ctrl := range controls {
+			fmt.Fprintf(w, "    - %s (type: %s)\n", ctrl.Name, ctrl.Type)
+		}
+	}
 }

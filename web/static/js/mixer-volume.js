@@ -96,6 +96,17 @@
       } catch (e) {}
     }
 
+    // Submit the volume change to the server
+    if (typeof htmx !== 'undefined') {
+      var card = activeSlider.dataset.cardId
+      var control = activeSlider.dataset.controlName
+      var volume = activeSlider.getAttribute('aria-valuenow')
+      htmx.ajax('POST', '/control/volume', {
+        values: { card: card, control: control, volume: volume },
+        swap: 'none'
+      })
+    }
+
     activeSlider = null
   }
 
