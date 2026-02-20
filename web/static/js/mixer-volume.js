@@ -44,10 +44,17 @@
     if (!track) return
 
     var rect = track.getBoundingClientRect()
-    if (!rect || rect.width === 0) return
+    if (!rect || rect.width === 0 || rect.height === 0) return
 
-    var x = event.clientX
-    var ratio = (x - rect.left) / rect.width
+    var vertical = rect.height > rect.width
+    var ratio = 0
+    if (vertical) {
+      var y = event.clientY
+      ratio = 1 - (y - rect.top) / rect.height
+    } else {
+      var x = event.clientX
+      ratio = (x - rect.left) / rect.width
+    }
     ratio = clamp(ratio, 0, 1)
 
     var min = parseIntAttr(slider, 'aria-valuemin', 0)
@@ -96,7 +103,12 @@
     var slider = event.target.closest('.mixer-control__volume[role="slider"]')
     if (!slider) return
 
-    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') {
+    if (
+      event.key !== 'ArrowLeft' &&
+      event.key !== 'ArrowRight' &&
+      event.key !== 'ArrowUp' &&
+      event.key !== 'ArrowDown'
+    ) {
       return
     }
 
@@ -106,10 +118,24 @@
     var min = parseIntAttr(slider, 'aria-valuemin', 0)
     var max = parseIntAttr(slider, 'aria-valuemax', 100)
     var current = parseIntAttr(slider, 'aria-valuenow', 0)
-    var delta = event.key === 'ArrowRight' ? step : -step
+    var delta = step
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') {
+      delta = -step
+    }
     var next = clamp(current + delta, min, max)
 
     syncSliderUI(slider, next)
+
+    // Trigger HTMX request to update volume on server
+    if (typeof htmx !== 'undefined') {
+      var card = slider.dataset.cardId
+      var control = slider.dataset.controlName
+      var volume = slider.getAttribute('aria-valuenow')
+      htmx.ajax('POST', '/control/volume', {
+        values: { card: card, control: control, volume: volume },
+        swap: 'none'
+      })
+    }
   }
 
   document.addEventListener('DOMContentLoaded', function () {

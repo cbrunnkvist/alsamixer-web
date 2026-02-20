@@ -6,6 +6,8 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/user/alsamixer-web/internal/alsa"
@@ -14,11 +16,6 @@ import (
 	"github.com/user/alsamixer-web/web"
 )
 
-// VolumeController defines the minimal mixer operations needed by the HTTP handlers.
-type VolumeController interface {
-	SetVolume(card uint, control string, values []int) error
-}
-
 // Server handles HTTP requests and integrates SSE hub, config, mixer, and static file serving.
 type Server struct {
 	config  *config.Config
@@ -26,28 +23,151 @@ type Server struct {
 	mux     *http.ServeMux
 	server  *http.Server
 	tmpl    *template.Template
-	mixer   VolumeController
+	mixer   *alsa.Mixer
 	monitor *alsa.Monitor
 }
 
 type Theme string
 
 const (
-	ThemeTerminal Theme = "terminal"
-	ThemeModern   Theme = "modern"
-	ThemeMuji     Theme = "muji"
-	ThemeMobile   Theme = "mobile"
-	ThemeCreative Theme = "creative"
+	ThemeTerminal     Theme = "terminal"
+	ThemeModern       Theme = "modern"
+	ThemeMuji         Theme = "muji"
+	ThemeMobile       Theme = "mobile"
+	ThemeCreative     Theme = "creative"
+	ThemeLinuxConsole Theme = "linux-console"
 )
 
 const defaultTheme = ThemeTerminal
 
 var allowedThemes = map[Theme]struct{}{
-	ThemeTerminal: {},
-	ThemeModern:   {},
-	ThemeMuji:     {},
-	ThemeMobile:   {},
-	ThemeCreative: {},
+	ThemeTerminal:     {},
+	ThemeModern:       {},
+	ThemeMuji:         {},
+	ThemeMobile:       {},
+	ThemeCreative:     {},
+	ThemeLinuxConsole: {},
+}
+
+type pageData struct {
+	Theme string
+	Cards []cardView
+}
+
+type cardView struct {
+	ID          uint
+	Name        string
+	Description string
+	Controls    []controlView
+}
+
+type controlView struct {
+	ID               string
+	CardID           uint
+	Name             string
+	Description      string
+	HasVolume        bool
+	HasMute          bool
+	HasCapture       bool
+	VolumeMin        int
+	VolumeMax        int
+	VolumeNow        int
+	VolumeText       string
+	VolumeAriaLabel  string
+	MuteAriaLabel    string
+	CaptureAriaLabel string
+	Muted            bool
+	CaptureActive    bool
+	View             string
+}
+
+var nonAlphaNum = regexp.MustCompile(`[^a-z0-9]+`)
+
+func controlID(cardID uint, controlName string) string {
+	name := strings.ToLower(controlName)
+	name = nonAlphaNum.ReplaceAllString(name, "-")
+	name = strings.Trim(name, "-")
+	if name == "" {
+		name = "control"
+	}
+	return fmt.Sprintf("%d-%s", cardID, name)
+}
+
+func controlViewType(controlName string) string {
+	name := strings.ToLower(controlName)
+	if strings.Contains(name, "capture") ||
+		strings.Contains(name, "mic") ||
+		strings.Contains(name, "boost") ||
+		strings.Contains(name, "pre-amp") ||
+		strings.Contains(name, "input") ||
+		strings.Contains(name, "digital") {
+		return "capture"
+	}
+	return "playback"
+}
+
+func (s *Server) loadCards() []cardView {
+	if s.mixer == nil || !s.mixer.IsOpen() {
+		return nil
+	}
+
+	cards, err := s.mixer.ListCards()
+	if err != nil {
+		log.Printf("failed to list cards: %v", err)
+		return nil
+	}
+
+	result := make([]cardView, 0, len(cards))
+	for _, card := range cards {
+		cv := cardView{ID: card.ID, Name: card.Name}
+
+		controls, err := s.mixer.ListControls(card.ID)
+		if err != nil {
+			log.Printf("failed to list controls for card %d: %v", card.ID, err)
+			result = append(result, cv)
+			continue
+		}
+
+		for _, ctrl := range controls {
+			if ctrl.Type != "integer" {
+				continue
+			}
+
+			view := controlViewType(ctrl.Name)
+
+			volumes, err := s.mixer.GetVolume(card.ID, ctrl.Name)
+			volumeNow := 0
+			if err == nil && len(volumes) > 0 {
+				volumeNow = volumes[0]
+			}
+
+			muted, muteErr := s.mixer.GetMute(card.ID, ctrl.Name)
+			hasMute := muteErr == nil
+
+			cv.Controls = append(cv.Controls, controlView{
+				ID:               controlID(card.ID, ctrl.Name),
+				CardID:           card.ID,
+				Name:             ctrl.Name,
+				HasVolume:        true,
+				HasMute:          hasMute,
+				HasCapture:       false,
+				VolumeMin:        0,
+				VolumeMax:        100,
+				VolumeNow:        volumeNow,
+				VolumeText:       fmt.Sprintf("%d%%", volumeNow),
+				VolumeAriaLabel:  fmt.Sprintf("%s volume", ctrl.Name),
+				MuteAriaLabel:    fmt.Sprintf("%s mute", ctrl.Name),
+				CaptureAriaLabel: fmt.Sprintf("%s capture", ctrl.Name),
+				Muted:            muted,
+				CaptureActive:    false,
+				View:             view,
+			})
+		}
+
+		result = append(result, cv)
+	}
+
+	return result
 }
 
 func mustParseTemplates() *template.Template {
@@ -77,7 +197,13 @@ func NewServer(cfg *config.Config, hub *sse.Hub) *Server {
 		mixer:  alsa.NewMixer(),
 	}
 
-	s.monitor = alsa.NewMonitor(s.mixer, s.hub)
+	if s.mixer == nil {
+		log.Printf("ALSA mixer unavailable; continuing without monitor")
+	} else if !s.mixer.IsOpen() {
+		log.Printf("ALSA mixer not open; continuing without monitor")
+	} else {
+		s.monitor = alsa.NewMonitor(s.mixer, s.hub, cfg.MonitorFile)
+	}
 	s.tmpl = mustParseTemplates()
 
 	s.setupRoutes()
@@ -110,11 +236,7 @@ func (s *Server) setupRoutes() {
 		requestedTheme := r.URL.Query().Get("theme")
 		theme := normalizeTheme(requestedTheme)
 
-		data := struct {
-			Theme string
-		}{
-			Theme: string(theme),
-		}
+		data := pageData{Theme: string(theme), Cards: s.loadCards()}
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		if err := s.tmpl.ExecuteTemplate(w, "base", data); err != nil {
@@ -188,13 +310,17 @@ func (rw *responseWriter) WriteHeader(code int) {
 // Start begins the HTTP server.
 func (s *Server) Start() error {
 	log.Printf("Starting server on %s", s.server.Addr)
-	s.monitor.Start()
+	if s.monitor != nil {
+		s.monitor.Start()
+	}
 	return s.server.ListenAndServe()
 }
 
 // Stop gracefully shuts down the HTTP server.
 func (s *Server) Stop(ctx context.Context) error {
 	log.Println("Shutting down server...")
-	s.monitor.Stop()
+	if s.monitor != nil {
+		s.monitor.Stop()
+	}
 	return s.server.Shutdown(ctx)
 }

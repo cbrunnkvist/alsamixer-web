@@ -33,6 +33,7 @@ type ControlView struct {
 	HasCapture       bool
 	CaptureAriaLabel string
 	CaptureActive    bool
+	View             string
 }
 
 // CardView represents a sound card and its controls for rendering.
@@ -93,6 +94,7 @@ func TestControlsTemplateExecutesWithMockData(t *testing.T) {
 						HasCapture:       true,
 						CaptureAriaLabel: "Capture Master",
 						CaptureActive:    true,
+						View:             "playback",
 					},
 				},
 			},

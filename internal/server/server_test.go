@@ -23,6 +23,14 @@ type fakeMixer struct {
 	err     error
 }
 
+func (f *fakeMixer) GetMute(card uint, control string) (bool, error) {
+	return false, nil
+}
+
+func (f *fakeMixer) SetMute(card uint, control string, muted bool) error {
+	return nil
+}
+
 func (f *fakeMixer) SetVolume(card uint, control string, values []int) error {
 	f.card = card
 	f.control = control
@@ -118,11 +126,10 @@ func TestServerRoutes(t *testing.T) {
 			expectedStatus: http.StatusBadRequest,
 		},
 		{
-			name:           "POST /control/mute returns 501",
+			name:           "POST /control/mute without form data returns 400",
 			method:         "POST",
 			path:           "/control/mute",
-			expectedStatus: http.StatusNotImplemented,
-			expectedBody:   "Not Implemented",
+			expectedStatus: http.StatusBadRequest,
 		},
 		{
 			name:           "GET / with valid theme query applies requested theme",
@@ -186,7 +193,13 @@ func TestVolumeHandler_Success(t *testing.T) {
 	srv := NewServer(cfg, hub)
 
 	fm := &fakeMixer{}
-	srv.mixer = fm
+	origNewMixer := newMixer
+	newMixer = func() mixer {
+		return fm
+	}
+	defer func() {
+		newMixer = origNewMixer
+	}()
 
 	form := url.Values{}
 	form.Set("card", "0")

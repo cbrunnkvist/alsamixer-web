@@ -3,17 +3,18 @@ package alsa
 import (
 	"log"
 	"os"
-	"path/filepath"
 	"sync"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
+
+	"github.com/user/alsamixer-web/internal/sse"
 )
 
 // Hub interface for broadcasting events
 type Hub interface {
 	ClientCount() int
-	Broadcast(event interface{})
+	Broadcast(event sse.Event)
 }
 
 // Monitor watches for ALSA mixer state changes and broadcasts them via SSE
@@ -46,22 +47,23 @@ type ControlState struct {
 }
 
 // NewMonitor creates a new ALSA monitor instance
-func NewMonitor(mixer *Mixer, hub Hub) *Monitor {
+func NewMonitor(mixer *Mixer, hub Hub, monitorFile string) *Monitor {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		log.Fatalf("failed to create file watcher: %v", err)
 	}
 
+	paths := []string{}
+	if monitorFile != "" {
+		paths = append(paths, monitorFile)
+	}
+
 	monitor := &Monitor{
-		mixer:   mixer,
-		hub:     hub,
-		stopCh:  make(chan struct{}),
-		watcher: watcher,
-		configPaths: []string{
-			filepath.Join(os.Getenv("HOME"), ".asoundrc"),
-			"/etc/asound.conf",
-			// Add more paths if needed, e.g., for /etc/asound.conf.d/
-		},
+		mixer:       mixer,
+		hub:         hub,
+		stopCh:      make(chan struct{}),
+		watcher:     watcher,
+		configPaths: paths,
 	}
 
 	// Add config files to watcher
@@ -149,10 +151,9 @@ func (m *Monitor) configWatcherLoop() {
 			if event.Op&fsnotify.Write == fsnotify.Write || event.Op&fsnotify.Create == fsnotify.Create {
 				log.Printf("ALSA config file changed: %s", event.Name)
 				if m.hub != nil {
-					m.hub.Broadcast(map[string]interface{}{
-						"type": "config-change",
+					m.hub.Broadcast(sse.Event{Type: "config-change", Data: map[string]interface{}{
 						"path": event.Name,
-					})
+					}})
 				}
 			}
 		case err, ok := <-m.watcher.Errors:
@@ -280,11 +281,8 @@ func (m *Monitor) hasStateChanged(current *StateSnapshot) bool {
 
 // broadcastStateChange sends the state change event to all connected clients
 func (m *Monitor) broadcastStateChange(snapshot *StateSnapshot) {
-	event := map[string]interface{}{
-		"type":      "mixer-update",
+	m.hub.Broadcast(sse.Event{Type: "mixer-update", Data: map[string]interface{}{
 		"state":     snapshot,
 		"timestamp": time.Now().Unix(),
-	}
-
-	m.hub.Broadcast(event)
+	}})
 }

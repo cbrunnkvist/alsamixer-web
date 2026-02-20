@@ -5,9 +5,10 @@ package alsa
 
 import (
 	"fmt"
+	"log"
 	"sync"
 
-	"github.com/gen2brain/alsa"
+	alsalib "github.com/gen2brain/alsa"
 )
 
 // Card represents an ALSA sound card
@@ -34,9 +35,11 @@ type Mixer struct {
 
 // NewMixer creates a new ALSA mixer instance
 func NewMixer() *Mixer {
-	return &Mixer{
-		open: true,
+	if _, err := alsalib.EnumerateCards(); err != nil {
+		log.Printf("WARNING: ALSA enumeration failed: %v", err)
 	}
+
+	return &Mixer{open: true}
 }
 
 // ListCards enumerates all available sound cards
@@ -48,36 +51,18 @@ func (m *Mixer) ListCards() ([]Card, error) {
 		return nil, fmt.Errorf("mixer is closed")
 	}
 
-	var cards []Card
-	cardIndex := uint(0)
-
-	for {
-		handle, err := alsa.Open("hw", cardIndex, 0, 0)
-		if err != nil {
-			// No more cards available
-			break
-		}
-		defer handle.Close()
-
-		cardName, err := handle.CardName()
-		if err != nil {
-			cardName = fmt.Sprintf("Card %d", cardIndex)
-		}
-
-		cards = append(cards, Card{
-			ID:   cardIndex,
-			Name: cardName,
-		})
-
-		cardIndex++
-		if cardIndex > 100 {
-			// Safety limit to prevent infinite loops
-			break
-		}
+	soundCards, err := alsalib.EnumerateCards()
+	if err != nil {
+		return nil, fmt.Errorf("failed to enumerate cards: %w", err)
 	}
 
-	if len(cards) == 0 {
+	if len(soundCards) == 0 {
 		return nil, fmt.Errorf("no sound cards found")
+	}
+
+	cards := make([]Card, 0, len(soundCards))
+	for _, c := range soundCards {
+		cards = append(cards, Card{ID: uint(c.ID), Name: c.Name})
 	}
 
 	return cards, nil
@@ -92,71 +77,35 @@ func (m *Mixer) ListControls(card uint) ([]Control, error) {
 		return nil, fmt.Errorf("mixer is closed")
 	}
 
-	handle, err := alsa.Open("hw", card, 0, 0)
+	mixer, err := alsalib.MixerOpen(card)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open card %d: %w", card, err)
+		return nil, fmt.Errorf("failed to open mixer for card %d: %w", card, err)
 	}
-	defer handle.Close()
+	defer mixer.Close()
 
 	var controls []Control
-	elem, err := handle.FirstElem()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get first control: %w", err)
-	}
-
-	for {
-		if elem == nil {
-			break
-		}
-
-		info, err := elem.Info()
+	for i := 0; i < mixer.NumCtls(); i++ {
+		ctl, err := mixer.CtlByIndex(uint(i))
 		if err != nil {
-			// Skip controls we can't get info for
-			elem, _ = elem.Next()
 			continue
 		}
 
-		control := Control{
-			Name:  info.Name,
-			Count: info.Count,
-		}
+		ctrl := Control{Name: ctl.Name(), Count: int(ctl.NumValues())}
 
-		// Determine control type and value range
-		switch info.Type {
-		case alsa.ElemTypeInteger:
-			control.Type = "integer"
-			if value, err := elem.Value(); err == nil && len(value) > 0 {
-				if intValue, ok := value[0].(int64); ok {
-					control.Min = 0
-					control.Max = 100 // Default range for percentage
-					// Try to get actual min/max if available
-					if min, max, err := elem.GetRange(); err == nil {
-						control.Min = min
-						control.Max = max
-					}
-					// Check if this is a mute control
-					if info.Name == "Mute" || info.Name == "Capture Switch" {
-						control.IsMuted = intValue == 0
-					}
-				}
-			}
-		case alsa.ElemTypeBoolean:
-			control.Type = "boolean"
-			if value, err := elem.Value(); err == nil && len(value) > 0 {
-				if boolValue, ok := value[0].(bool); ok {
-					control.IsMuted = boolValue
-				}
-			}
+		switch ctl.Type() {
+		case alsalib.SNDRV_CTL_ELEM_TYPE_INTEGER:
+			ctrl.Type = "integer"
+			min, _ := ctl.RangeMin()
+			max, _ := ctl.RangeMax()
+			ctrl.Min = int64(min)
+			ctrl.Max = int64(max)
+		case alsalib.SNDRV_CTL_ELEM_TYPE_BOOLEAN:
+			ctrl.Type = "boolean"
 		default:
-			control.Type = "unknown"
+			continue
 		}
 
-		controls = append(controls, control)
-
-		elem, err = elem.Next()
-		if err != nil {
-			break
-		}
+		controls = append(controls, ctrl)
 	}
 
 	if len(controls) == 0 {
@@ -175,49 +124,26 @@ func (m *Mixer) GetVolume(card uint, control string) ([]int, error) {
 		return nil, fmt.Errorf("mixer is closed")
 	}
 
-	handle, err := alsa.Open("hw", card, 0, 0)
+	mixer, err := alsalib.MixerOpen(card)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open card %d: %w", card, err)
+		return nil, fmt.Errorf("failed to open mixer: %w", err)
 	}
-	defer handle.Close()
+	defer mixer.Close()
 
-	elem, err := handle.FindElem(control)
+	ctl, err := mixer.CtlByName(control)
 	if err != nil {
-		return nil, fmt.Errorf("control '%s' not found on card %d: %w", control, card, err)
+		return nil, fmt.Errorf("control '%s' not found: %w", control, err)
 	}
 
-	values, err := elem.Value()
+	min, _ := ctl.RangeMin()
+	max, _ := ctl.RangeMax()
+	val, err := ctl.Value(0)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get volume for control '%s': %w", control, err)
+		return nil, err
 	}
 
-	// Convert to percentage (0-100)
-	var volumes []int
-	for _, v := range values {
-		if intValue, ok := v.(int64); ok {
-			// Try to get the actual range
-			if min, max, err := elem.GetRange(); err == nil && max > min {
-				// Convert to percentage
-				percentage := int((intValue - min) * 100 / (max - min))
-				if percentage < 0 {
-					percentage = 0
-				} else if percentage > 100 {
-					percentage = 100
-				}
-				volumes = append(volumes, percentage)
-			} else {
-				// Fallback: assume 0-100 range
-				if intValue < 0 {
-					intValue = 0
-				} else if intValue > 100 {
-					intValue = 100
-				}
-				volumes = append(volumes, int(intValue))
-			}
-		}
-	}
-
-	return volumes, nil
+	percent := int((val - min) * 100 / (max - min))
+	return []int{percent}, nil
 }
 
 // SetVolume sets the volume levels for a control
@@ -233,41 +159,22 @@ func (m *Mixer) SetVolume(card uint, control string, values []int) error {
 		return fmt.Errorf("no volume values provided")
 	}
 
-	handle, err := alsa.Open("hw", card, 0, 0)
+	mixer, err := alsalib.MixerOpen(card)
 	if err != nil {
-		return fmt.Errorf("failed to open card %d: %w", card, err)
+		return fmt.Errorf("failed to open mixer: %w", err)
 	}
-	defer handle.Close()
+	defer mixer.Close()
 
-	elem, err := handle.FindElem(control)
+	ctl, err := mixer.CtlByName(control)
 	if err != nil {
-		return fmt.Errorf("control '%s' not found on card %d: %w", control, card, err)
+		return err
 	}
 
-	// Get the actual range
-	min, max, err := elem.GetRange()
-	if err != nil {
-		min = 0
-		max = 100
-	}
-
-	// Convert percentage to ALSA values
-	alsaValues := make([]interface{}, len(values))
-	for i, v := range values {
-		if v < 0 {
-			v = 0
-		} else if v > 100 {
-			v = 100
-		}
-		// Convert percentage to ALSA range
-		alsaValues[i] = min + (int64(v) * (max - min) / 100)
-	}
-
-	if err := elem.SetValue(alsaValues...); err != nil {
-		return fmt.Errorf("failed to set volume for control '%s': %w", control, err)
-	}
-
-	return nil
+	min, _ := ctl.RangeMin()
+	max, _ := ctl.RangeMax()
+	v := values[0]
+	raw := min + (v*(max-min))/100
+	return ctl.SetValue(0, raw)
 }
 
 // GetMute retrieves the mute state for a control
@@ -279,47 +186,27 @@ func (m *Mixer) GetMute(card uint, control string) (bool, error) {
 		return false, fmt.Errorf("mixer is closed")
 	}
 
-	handle, err := alsa.Open("hw", card, 0, 0)
+	mixer, err := alsalib.MixerOpen(card)
 	if err != nil {
-		return false, fmt.Errorf("failed to open card %d: %w", card, err)
+		return false, err
 	}
-	defer handle.Close()
+	defer mixer.Close()
 
-	// Try to find a mute control first
-	muteControl := control + " Switch"
-	elem, err := handle.FindElem(muteControl)
+	ctl, err := mixer.CtlByName(control)
 	if err != nil {
-		// Try alternative mute control names
-		muteControls := []string{control + " Switch", "Capture Switch", "Master Switch", "Mute"}
-		for _, mc := range muteControls {
-			if elem, err = handle.FindElem(mc); err == nil {
-				break
-			}
-		}
-		if err != nil {
-			// No mute control found, assume not muted
-			return false, nil
-		}
+		return false, nil
 	}
 
-	values, err := elem.Value()
+	if ctl.Type() != alsalib.SNDRV_CTL_ELEM_TYPE_BOOLEAN {
+		return false, nil
+	}
+
+	val, err := ctl.Value(0)
 	if err != nil {
-		return false, fmt.Errorf("failed to get mute state for control '%s': %w", control, err)
+		return false, err
 	}
 
-	if len(values) == 0 {
-		return false, fmt.Errorf("no mute state available for control '%s'", control)
-	}
-
-	// Check the first channel's mute state
-	switch v := values[0].(type) {
-	case bool:
-		return v, nil
-	case int64:
-		return v == 0, nil // 0 typically means muted in ALSA
-	default:
-		return false, fmt.Errorf("unexpected mute value type for control '%s'", control)
-	}
+	return val != 0, nil
 }
 
 // SetMute sets the mute state for a control
@@ -331,60 +218,26 @@ func (m *Mixer) SetMute(card uint, control string, muted bool) error {
 		return fmt.Errorf("mixer is closed")
 	}
 
-	handle, err := alsa.Open("hw", card, 0, 0)
+	mixer, err := alsalib.MixerOpen(card)
 	if err != nil {
-		return fmt.Errorf("failed to open card %d: %w", card, err)
+		return err
 	}
-	defer handle.Close()
+	defer mixer.Close()
 
-	// Try to find a mute control first
-	muteControl := control + " Switch"
-	elem, err := handle.FindElem(muteControl)
+	ctl, err := mixer.CtlByName(control)
 	if err != nil {
-		// Try alternative mute control names
-		muteControls := []string{control + " Switch", "Capture Switch", "Master Switch", "Mute"}
-		for _, mc := range muteControls {
-			if elem, err = handle.FindElem(mc); err == nil {
-				break
-			}
-		}
-		if err != nil {
-			return fmt.Errorf("no mute control found for '%s' on card %d", control, card)
-		}
+		return err
 	}
 
-	// Get current values to determine the type
-	values, err := elem.Value()
-	if err != nil {
-		return fmt.Errorf("failed to get current mute values for control '%s': %w", control, err)
+	if ctl.Type() != alsalib.SNDRV_CTL_ELEM_TYPE_BOOLEAN {
+		return fmt.Errorf("control '%s' is not boolean", control)
 	}
 
-	if len(values) == 0 {
-		return fmt.Errorf("no mute control channels found for '%s'", control)
+	val := 0
+	if muted {
+		val = 1
 	}
-
-	// Set mute state for all channels
-	newValues := make([]interface{}, len(values))
-	for i := range values {
-		switch values[i].(type) {
-		case bool:
-			newValues[i] = muted
-		case int64:
-			if muted {
-				newValues[i] = int64(0) // 0 typically means muted
-			} else {
-				newValues[i] = int64(1) // 1 typically means unmuted
-			}
-		default:
-			return fmt.Errorf("unsupported mute control type for '%s'", control)
-		}
-	}
-
-	if err := elem.SetValue(newValues...); err != nil {
-		return fmt.Errorf("failed to set mute state for control '%s': %w", control, err)
-	}
-
-	return nil
+	return ctl.SetValue(0, val)
 }
 
 // Close cleans up resources and marks the mixer as closed

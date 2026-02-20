@@ -14,8 +14,10 @@
     <script src="/static/js/htmx.min.js" defer></script>
     <script src="/static/js/htmx-sse.js" defer></script>
     <script src="/static/js/mixer-volume.js" defer></script>
+    <script src="/static/js/mixer-view.js" defer></script>
+    <script src="/static/js/mixer-sync.js" defer></script>
   </head>
-  <body class="app-shell">
+  <body class="app-shell theme-{{$theme}}">
     <a href="#main-content" class="skip-link">Skip to main content</a>
 
     <div id="sr-announcer" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
@@ -31,7 +33,8 @@
             <option value="modern" {{if eq $theme "modern"}}selected{{end}}>Modern</option>
             <option value="muji" {{if eq $theme "muji"}}selected{{end}}>Muji</option>
             <option value="mobile" {{if eq $theme "mobile"}}selected{{end}}>Mobile</option>
-            <option value="creative" {{if eq $theme "creative"}}selected{{end}}>Creative</option>
+          <option value="creative" {{if eq $theme "creative"}}selected{{end}}>Creative</option>
+          <option value="linux-console" {{if eq $theme "linux-console"}}selected{{end}}>Linux Console</option>
           </select>
           <button type="submit" class="theme-switcher__submit">Apply</button>
         </form>
@@ -43,10 +46,13 @@
     </main>
 
     <footer class="app-footer" role="contentinfo">
-      <div class="connection-status" role="status" aria-live="polite" aria-atomic="true">
+      <div class="connection-status" role="status" aria-live="polite" aria-atomic="true"
+           hx-trigger="sse:connected from:body, sse:disconnected from:body"
+           hx-on="sse:disconnected: this.classList.add('is-disconnected'); this.querySelector('.connection-status__value').textContent = 'Disconnected';
+                   sse:connected: this.classList.remove('is-disconnected'); this.querySelector('.connection-status__value').textContent = 'Connected';">
         <span class="connection-status__label" id="connection-status-label">Connection</span>
         <span class="connection-status__value" aria-describedby="connection-status-label" data-connection-state>
-          Connecting to audio mixer
+          Connected
         </span>
       </div>
     </footer>

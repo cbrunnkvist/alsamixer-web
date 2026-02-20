@@ -154,3 +154,36 @@ a {
     transition-duration: 0.001ms !important;
   }
 }
+
+.mixer-card__view {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.mixer-card__view-button {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: inherit;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.35rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.mixer-card__view-button[aria-pressed="true"] {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.mixer-control.is-filtered {
+  display: none;
+}
+
+.mixer-card__nav {
+  display: none;
+}
+
+.mixer-card__empty {
+  display: none;
+}

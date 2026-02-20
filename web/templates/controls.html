@@ -13,7 +13,7 @@
   <section id="mixer-live-region" class="sr-only" aria-live="polite" aria-atomic="true"></section>
 
   {{range .Cards}}
-  <section class="mixer-card" aria-labelledby="card-{{.ID}}" data-card-id="{{.ID}}">
+  <section class="mixer-card" aria-labelledby="card-{{.ID}}" data-card-id="{{.ID}}" data-current-view="playback">
     <header class="mixer-card__header">
       <div class="mixer-card__title-row">
         <span class="mixer-card__index" aria-hidden="true">Card {{.ID}}</span>
@@ -22,6 +22,11 @@
       {{if .Description}}
       <p class="mixer-card__description">{{.Description}}</p>
       {{end}}
+      <div class="mixer-card__view" role="group" aria-label="Mixer view">
+        <button type="button" class="mixer-card__view-button" data-view="playback" aria-pressed="true">Playback</button>
+        <button type="button" class="mixer-card__view-button" data-view="capture" aria-pressed="false">Capture</button>
+        <button type="button" class="mixer-card__view-button" data-view="all" aria-pressed="false">All</button>
+      </div>
     </header>
 
     <div class="mixer-card__controls">
@@ -29,13 +34,19 @@
         {{template "control" .}}
       {{end}}
     </div>
+    <p class="mixer-card__empty" role="status" aria-live="polite"></p>
+    <div class="mixer-card__nav" aria-label="Control navigation">
+      <button type="button" class="mixer-card__nav-button" data-nav="prev" aria-label="Previous control">[&lt;]</button>
+      <span class="mixer-card__nav-label" data-active-label aria-live="polite"></span>
+      <button type="button" class="mixer-card__nav-button" data-nav="next" aria-label="Next control">[&gt;]</button>
+    </div>
   </section>
   {{end}}
 </main>
 {{end}}
 
 {{define "control"}}
-<article class="mixer-control" data-control-id="{{.ID}}" data-card-id="{{.CardID}}" data-control-name="{{.Name}}">
+<article class="mixer-control" data-control-id="{{.ID}}" data-card-id="{{.CardID}}" data-control-name="{{.Name}}" data-control-view="{{.View}}">
   <header class="mixer-control__header">
     <div class="mixer-control__title-row">
       <h3 class="mixer-control__label">{{.Name}}</h3>
@@ -70,10 +81,12 @@
       aria-valuetext="{{.VolumeText}}"
       aria-describedby="volume-help-{{.ID}}"
       data-control-kind="volume"
+      data-card-id="{{.CardID}}"
+      data-control-name="{{.Name}}"
       hx-post="/control/volume"
       hx-trigger="click, keyup[key=='ArrowLeft' || key=='ArrowRight']"
       hx-swap="none"
-      hx-vals='js:{ card: this.closest("[data-card-id]").dataset.cardId, control: this.closest("[data-control-name]").dataset.controlName, volume: this.getAttribute("aria-valuenow") }'
+      hx-vals='js:{ card: this.dataset.cardId, control: this.dataset.controlName, volume: this.getAttribute("aria-valuenow") }'
       style="--volume-percent: {{.VolumeNow}}%;">
       <div class="mixer-control__volume-track">
         <div class="mixer-control__volume-fill" aria-hidden="true"></div>
@@ -95,11 +108,13 @@
       aria-checked="{{if .Muted}}true{{else}}false{{end}}"
       aria-describedby="mute-help-{{.ID}}"
       data-control-kind="mute"
+      data-card-id="{{.CardID}}"
+      data-control-name="{{.Name}}"
       hx-post="/control/mute"
       hx-trigger="click, keyup[key=='Enter' || key==' ' || key=='Space']"
       hx-swap="none"
-      hx-vals='js:{ card: this.closest("[data-card-id]").dataset.cardId, control: this.closest("[data-control-name]").dataset.controlName, muted: this.getAttribute("aria-checked") === "true" }'
-      hx-on='htmx:afterRequest: if (event.detail.successful) { const current = this.getAttribute("aria-checked") === "true"; const next = !current; this.setAttribute("aria-checked", next ? "true" : "false"); const label = this.querySelector(".mixer-control__toggle-label"); if (label) { label.textContent = next ? "Muted" : "Unmuted"; } const sr = document.getElementById("mute-help-{{.ID}}"); if (sr) { const name = this.closest("[data-control-name]").dataset.controlName || "{{.Name}}"; sr.textContent = next ? "Mute enabled for " + name + "." : "Mute disabled for " + name + "."; } }'>
+      hx-vals='js:{ card: this.dataset.cardId, control: this.dataset.controlName, muted: this.getAttribute("aria-checked") === "true" }'
+      hx-on='htmx:afterRequest: if (event.detail.successful) { const current = this.getAttribute("aria-checked") === "true"; const next = !current; this.setAttribute("aria-checked", next ? "true" : "false"); const label = this.querySelector(".mixer-control__toggle-label"); if (label) { label.textContent = next ? "Muted" : "Unmuted"; } const sr = document.getElementById("mute-help-{{.ID}}"); if (sr) { const name = this.dataset.controlName || "{{.Name}}"; sr.textContent = next ? "Mute enabled for " + name + "." : "Mute disabled for " + name + "."; } }'>
       <span class="sr-only" id="mute-help-{{.ID}}">
         {{if .Muted}}Mute enabled for {{.Name}}.{{else}}Mute disabled for {{.Name}}.{{end}}
       </span>
@@ -119,11 +134,13 @@
       aria-checked="{{if .CaptureActive}}true{{else}}false{{end}}"
       aria-describedby="capture-help-{{.ID}}"
       data-control-kind="capture"
+      data-card-id="{{.CardID}}"
+      data-control-name="{{.Name}}"
       hx-post="/control/capture"
       hx-trigger="click, keyup[key=='Enter' || key==' ' || key=='Space']"
       hx-swap="none"
-      hx-vals='js:{ card: this.closest("[data-card-id]").dataset.cardId, control: this.closest("[data-control-name]").dataset.controlName, active: this.getAttribute("aria-checked") === "true" }'
-      hx-on='htmx:afterRequest: if (event.detail.successful) { const current = this.getAttribute("aria-checked") === "true"; const next = !current; this.setAttribute("aria-checked", next ? "true" : "false"); const label = this.querySelector(".mixer-control__toggle-label"); if (label) { label.textContent = next ? "Capture On" : "Capture Off"; } const sr = document.getElementById("capture-help-{{.ID}}"); if (sr) { const name = this.closest("[data-control-name]").dataset.controlName || "{{.Name}}"; sr.textContent = next ? "Capture enabled for " + name + "." : "Capture disabled for " + name + "."; } }'>
+      hx-vals='js:{ card: this.dataset.cardId, control: this.dataset.controlName, active: this.getAttribute("aria-checked") === "true" }'
+      hx-on='htmx:afterRequest: if (event.detail.successful) { const current = this.getAttribute("aria-checked") === "true"; const next = !current; this.setAttribute("aria-checked", next ? "true" : "false"); const label = this.querySelector(".mixer-control__toggle-label"); if (label) { label.textContent = next ? "Capture On" : "Capture Off"; } const sr = document.getElementById("capture-help-{{.ID}}"); if (sr) { const name = this.dataset.controlName || "{{.Name}}"; sr.textContent = next ? "Capture enabled for " + name + "." : "Capture disabled for " + name + "."; } }'>
       <span class="sr-only" id="capture-help-{{.ID}}">
         {{if .CaptureActive}}Capture enabled for {{.Name}}.{{else}}Capture disabled for {{.Name}}.{{end}}
       </span>
