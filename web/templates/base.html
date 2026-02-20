@@ -26,18 +26,31 @@
       <div class="app-header__inner">
         <h1 class="app-title">{{ block "header_title" . }}ALSA Mixer Web{{ end }}</h1>
 
-        <form class="theme-switcher" method="get" aria-label="Theme selector">
-          <label for="theme-select" class="theme-switcher__label">Theme</label>
-          <select id="theme-select" name="theme" class="theme-switcher__select">
-            <option value="terminal" {{if eq $theme "terminal"}}selected{{end}}>Terminal</option>
-            <option value="modern" {{if eq $theme "modern"}}selected{{end}}>Modern</option>
-            <option value="muji" {{if eq $theme "muji"}}selected{{end}}>Muji</option>
-            <option value="mobile" {{if eq $theme "mobile"}}selected{{end}}>Mobile</option>
-          <option value="creative" {{if eq $theme "creative"}}selected{{end}}>Creative</option>
-          <option value="linux-console" {{if eq $theme "linux-console"}}selected{{end}}>Linux Console</option>
-          </select>
-          <button type="submit" class="theme-switcher__submit">Apply</button>
-        </form>
+        <div class="app-header__controls">
+          <form class="card-switcher" method="get" aria-label="Card selector">
+            <input type="hidden" name="theme" value="{{$theme}}">
+            <label for="card-select" class="card-switcher__label">Card</label>
+            <select id="card-select" name="card" class="card-switcher__select" onchange="this.form.submit()">
+              <option value="default" {{if eq .SelectedCard .DefaultCard}}selected{{end}}>(default)</option>
+              {{range .AllCards}}
+              <option value="{{.ID}}" {{if eq .ID $.SelectedCard}}selected{{end}}>{{.Name}}</option>
+              {{end}}
+            </select>
+          </form>
+
+          <form class="theme-switcher" method="get" aria-label="Theme selector">
+            <input type="hidden" name="card" value="{{.SelectedCard}}">
+            <label for="theme-select" class="theme-switcher__label">Theme</label>
+            <select id="theme-select" name="theme" class="theme-switcher__select" onchange="this.form.submit()">
+              <option value="terminal" {{if eq $theme "terminal"}}selected{{end}}>Terminal</option>
+              <option value="modern" {{if eq $theme "modern"}}selected{{end}}>Modern</option>
+              <option value="muji" {{if eq $theme "muji"}}selected{{end}}>Muji</option>
+              <option value="mobile" {{if eq $theme "mobile"}}selected{{end}}>Mobile</option>
+            <option value="creative" {{if eq $theme "creative"}}selected{{end}}>Creative</option>
+            <option value="linux-console" {{if eq $theme "linux-console"}}selected{{end}}>Linux Console</option>
+            </select>
+          </form>
+        </div>
       </div>
     </header>
 

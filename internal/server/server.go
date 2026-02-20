@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -50,8 +51,11 @@ var allowedThemes = map[Theme]struct{}{
 }
 
 type pageData struct {
-	Theme string
-	Cards []cardView
+	Theme        string
+	Cards        []cardView
+	SelectedCard uint
+	DefaultCard  uint
+	AllCards     []alsa.Card
 }
 
 type cardView struct {
@@ -107,6 +111,10 @@ func controlViewType(controlName string) string {
 }
 
 func (s *Server) loadCards() []cardView {
+	return s.loadCardsForFilter(-1)
+}
+
+func (s *Server) loadCardsForFilter(selectedCardID int) []cardView {
 	if s.mixer == nil || !s.mixer.IsOpen() {
 		return nil
 	}
@@ -119,6 +127,10 @@ func (s *Server) loadCards() []cardView {
 
 	result := make([]cardView, 0, len(cards))
 	for _, card := range cards {
+		if selectedCardID >= 0 && int(card.ID) != selectedCardID {
+			continue
+		}
+
 		cv := cardView{ID: card.ID, Name: card.Name}
 
 		controls, err := s.mixer.ListControls(card.ID)
@@ -236,7 +248,37 @@ func (s *Server) setupRoutes() {
 		requestedTheme := r.URL.Query().Get("theme")
 		theme := normalizeTheme(requestedTheme)
 
-		data := pageData{Theme: string(theme), Cards: s.loadCards()}
+		allCards, _ := s.mixer.ListCards()
+		configuredDefault := alsa.GetDefaultCard()
+		resolvedDefault := alsa.ResolveDefaultCard(allCards, configuredDefault)
+
+		cardParam := r.URL.Query().Get("card")
+		var selectedCardID uint
+		if cardParam == "" || cardParam == "default" {
+			selectedCardID = resolvedDefault
+		} else if cardNum, err := strconv.ParseUint(cardParam, 10, 0); err == nil {
+			selectedCardID = uint(cardNum)
+			found := false
+			for _, c := range allCards {
+				if c.ID == selectedCardID {
+					found = true
+					break
+				}
+			}
+			if !found {
+				selectedCardID = resolvedDefault
+			}
+		} else {
+			selectedCardID = resolvedDefault
+		}
+
+		data := pageData{
+			Theme:        string(theme),
+			Cards:        s.loadCardsForFilter(int(selectedCardID)),
+			SelectedCard: selectedCardID,
+			DefaultCard:  resolvedDefault,
+			AllCards:     allCards,
+		}
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		if err := s.tmpl.ExecuteTemplate(w, "base", data); err != nil {

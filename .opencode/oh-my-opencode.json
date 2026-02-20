@@ -1,0 +1,26 @@
+{
+  "$schema": "https://raw.githubusercontent.com/code-yeongyu/oh-my-opencode/master/assets/oh-my-opencode.schema.json",
+  "agents": {
+    "sisyphus": { "model": "opencode/glm-5-free" },
+    "hephaestus": { "model": "opencode/minimax-m2.5-free" },
+    "oracle": { "model": "opencode/glm-5-free" },
+    "librarian": { "model": "opencode/minimax-m2.5-free" },
+    "explore": { "model": "opencode/minimax-m2.5-free" },
+    "multimodal-looker": { "model": "opencode/trinity-large-preview-free" },
+    "prometheus": { "model": "opencode/glm-5-free" },
+    "metis": { "model": "opencode/glm-5-free" },
+    "momus": { "model": "opencode/glm-5-free" },
+    "atlas": { "model": "opencode/minimax-m2.5-free" },
+    "frontend-ui-ux": { "model": "opencode/trinity-large-preview-free" }
+  },
+  "categories": {
+    "visual-engineering": { "model": "opencode/trinity-large-preview-free" },
+    "ultrabrain": { "model": "opencode/glm-5-free" },
+    "deep": { "model": "opencode/glm-5-free" },
+    "artistry": { "model": "opencode/trinity-large-preview-free" },
+    "quick": { "model": "opencode/minimax-m2.5-free" },
+    "unspecified-low": { "model": "opencode/minimax-m2.5-free" },
+    "unspecified-high": { "model": "opencode/glm-5-free" },
+    "writing": { "model": "opencode/minimax-m2.5-free" }
+  }
+}
