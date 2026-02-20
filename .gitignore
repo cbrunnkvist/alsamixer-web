@@ -1,5 +1,5 @@
 # Binaries
-alsamixer-web
+/alsamixer-web
 *.exe
 *.dll
 *.so

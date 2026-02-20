@@ -11,6 +11,7 @@ type Hub struct {
 	register   chan *Client
 	unregister chan *Client
 	broadcast  chan Event
+	stop       chan struct{}
 	mu         sync.Mutex
 }
 
@@ -21,6 +22,7 @@ func NewHub() *Hub {
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
 		broadcast:  make(chan Event),
+		stop:       make(chan struct{}),
 	}
 }
 
@@ -66,8 +68,23 @@ func (h *Hub) Run() {
 				}
 			}
 			h.mu.Unlock()
+
+		case <-h.stop:
+			// Close all clients before stopping
+			h.mu.Lock()
+			for client := range h.clients {
+				client.Close()
+				delete(h.clients, client)
+			}
+			h.mu.Unlock()
+			return
 		}
 	}
+}
+
+// Stop signals the hub to stop running.
+func (h *Hub) Stop() {
+	close(h.stop)
 }
 
 // ClientCount returns the number of connected clients.
