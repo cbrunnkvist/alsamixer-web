@@ -8,7 +8,7 @@
    ============================================================ */
 :root {
   /* Core terminal colors */
-  --term-bg: #000000;
+  --term-bg: #2b2f36;
   --term-bg-secondary: #0a0a0a;
   --term-text: #00ff00;
   --term-text-dim: #00aa00;

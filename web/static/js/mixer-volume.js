@@ -9,6 +9,12 @@
     return isNaN(n) ? fallback : n
   }
 
+  function parseFloatAttr(el, name, fallback) {
+    var raw = el.getAttribute(name)
+    var n = raw == null ? NaN : parseFloat(raw)
+    return isNaN(n) ? fallback : n
+  }
+
   function syncSliderUI(slider, volume) {
     var min = parseIntAttr(slider, 'aria-valuemin', 0)
     var max = parseIntAttr(slider, 'aria-valuemax', 100)
@@ -59,12 +65,43 @@
 
     var min = parseIntAttr(slider, 'aria-valuemin', 0)
     var max = parseIntAttr(slider, 'aria-valuemax', 100)
-    var volume = Math.round(min + ratio * (max - min))
+    
+    // Get step size from data attribute (calculated from ALSA range)
+    var step = parseFloatAttr(slider, 'data-volume-step', 1)
+    if (step <= 0) step = 1
+    
+    // Calculate raw value and round to nearest step
+    var raw = min + ratio * (max - min)
+    var volume = Math.round(raw / step) * step
+    volume = clamp(Math.round(volume), min, max)
 
     syncSliderUI(slider, volume)
   }
 
   var activeSlider = null
+  
+  // Throttling for server updates during drag
+  var lastSendTime = 0
+  var THROTTLE_MS = 100
+
+  function sendVolumeThrottled() {
+    if (!activeSlider) return
+    
+    var now = Date.now()
+    if (now - lastSendTime < THROTTLE_MS) return
+    
+    lastSendTime = now
+    
+    if (typeof htmx !== 'undefined') {
+      var card = activeSlider.dataset.cardId
+      var control = activeSlider.dataset.controlName
+      var volume = activeSlider.getAttribute('aria-valuenow')
+      htmx.ajax('POST', '/control/volume', {
+        values: { card: card, control: control, volume: volume },
+        swap: 'none'
+      })
+    }
+  }
 
   function handlePointerDown(event) {
     var slider = event.target.closest('.mixer-control__volume[role="slider"]')
@@ -83,6 +120,8 @@
   function handlePointerMove(event) {
     if (!activeSlider) return
     updateFromPointer(activeSlider, event)
+    // Send throttled update to server during drag
+    sendVolumeThrottled()
   }
 
   function clearPointerCapture(event) {
@@ -96,7 +135,7 @@
       } catch (e) {}
     }
 
-    // Submit the volume change to the server
+    // Final update to ensure server has latest value
     if (typeof htmx !== 'undefined') {
       var card = activeSlider.dataset.cardId
       var control = activeSlider.dataset.controlName
@@ -125,7 +164,10 @@
 
     event.preventDefault()
 
-    var step = 2
+    // Use step size for keyboard navigation too
+    var step = parseFloatAttr(slider, 'data-volume-step', 2)
+    if (step <= 0) step = 2
+    
     var min = parseIntAttr(slider, 'aria-valuemin', 0)
     var max = parseIntAttr(slider, 'aria-valuemax', 100)
     var current = parseIntAttr(slider, 'aria-valuenow', 0)

@@ -10,9 +10,11 @@
       class="mixer-stream"
       hx-ext="sse"
       sse-connect="/events"
-       aria-live="polite"
-       aria-atomic="false"
-     >
+      sse-swap="control-update"
+      hx-target="#sse-sink"
+      hx-swap="innerHTML"
+    >
+      <div id="sse-sink" class="sr-only" aria-live="off"></div>
       {{if .Cards}}
         {{template "controls" .}}
       {{else}}

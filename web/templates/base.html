@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ block "title" . }}ALSA Mixer Web{{ end }}</title>
 
-    {{ $theme := or .Theme "terminal" }}
+    {{ $theme := or .Theme "linux-console" }}
 
     <link rel="stylesheet" href="/static/css/base.css">
     <link rel="stylesheet" href="/static/themes/{{$theme}}.css">
@@ -42,12 +42,12 @@
             <input type="hidden" name="card" value="{{.SelectedCard}}">
             <label for="theme-select" class="theme-switcher__label">Theme</label>
             <select id="theme-select" name="theme" class="theme-switcher__select" onchange="this.form.submit()">
-              <option value="terminal" {{if eq $theme "terminal"}}selected{{end}}>Terminal</option>
+              <option value="linux-console" {{if eq $theme "linux-console"}}selected{{end}}>Linux Console</option>
               <option value="modern" {{if eq $theme "modern"}}selected{{end}}>Modern</option>
               <option value="muji" {{if eq $theme "muji"}}selected{{end}}>Muji</option>
               <option value="mobile" {{if eq $theme "mobile"}}selected{{end}}>Mobile</option>
-            <option value="creative" {{if eq $theme "creative"}}selected{{end}}>Creative</option>
-            <option value="linux-console" {{if eq $theme "linux-console"}}selected{{end}}>Linux Console</option>
+              <option value="creative" {{if eq $theme "creative"}}selected{{end}}>Creative</option>
+              <option value="terminal" {{if eq $theme "terminal"}}selected{{end}}>Terminal</option>
             </select>
           </form>
         </div>
