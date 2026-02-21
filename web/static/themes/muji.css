@@ -321,13 +321,13 @@ body {
   background-color: var(--muji-bg-active);
 }
 
-.mixer-control__toggle[data-state="muted"] {
+.mixer-control__toggle[aria-checked="true"] {
   background-color: var(--muji-bg-tertiary);
   border-color: var(--muji-accent-stone);
   color: var(--muji-text-muted);
 }
 
-.mixer-control__toggle[data-state="muted"]:hover {
+.mixer-control__toggle[aria-checked="true"]:hover {
   background-color: var(--muji-bg-hover);
 }
 

@@ -1,0 +1,44 @@
+#!/bin/bash
+# Wrapper script that watches the binary and restarts when it changes
+
+BINARY="/root/work/alsamixer-web/alsamixer-web"
+WATCH_FILE="/root/work/alsamixer-web/alsamixer-web"
+
+start_server() {
+    "$BINARY" --port 8888 &
+    echo "Started server with PID $!"
+}
+
+# Start initial server
+start_server
+
+# Get initial inode and PID
+last_inode=$(stat -c '%i' "$WATCH_FILE")
+server_pid=$!
+
+while true; do
+    current_inode=$(stat -c '%i' "$WATCH_FILE" 2>/dev/null)
+    
+    if [ "$current_inode" != "$last_inode" ]; then
+        echo "$(date): Binary changed (inode $last_inode -> $current_inode), restarting..."
+        last_inode=$current_inode
+        
+        # Kill existing process if running
+        if kill -0 $server_pid 2>/dev/null; then
+            echo "Killing old server (PID $server_pid)..."
+            kill $server_pid 2>/dev/null
+            wait $server_pid 2>/dev/null
+        fi
+        
+        # Start new server
+        start_server
+    fi
+    
+    # Check if server is still running
+    if ! kill -0 $server_pid 2>/dev/null; then
+        echo "$(date): Server died, restarting..."
+        start_server
+    fi
+    
+    sleep 1
+done

@@ -11,6 +11,11 @@ import (
 	"github.com/user/alsamixer-web/internal/sse"
 )
 
+func init() {
+	log.SetOutput(os.Stdout)
+	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
+}
+
 // Hub interface for broadcasting events
 type Hub interface {
 	ClientCount() int
@@ -103,36 +108,72 @@ func (m *Monitor) Stop() {
 func (m *Monitor) monitorLoop() {
 	defer m.wg.Done()
 
-	// Create ticker for 100ms intervals
-	m.ticker = time.NewTicker(100 * time.Millisecond)
-	defer m.ticker.Stop()
+	log.Printf("ALSA monitor loop started, hub client count: %d", m.hub.ClientCount())
 
+	// Create ticker for 100ms intervals
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+
+	log.Printf("ALSA monitor: ticker created, starting select loop")
+
+	// Always poll ALSA to detect external changes, regardless of client count.
+	// This ensures changes made via amixer or other tools are detected.
+	// The client count check was causing the monitor to skip polling when
+	// ClientCount() returned 0 even when clients were connected.
+
+	tickCount := 0
+	log.Println("ALSA monitor: about to enter select loop")
 	for {
 		select {
-		case <-m.ticker.C:
-			// Only poll if clients are connected
-			if m.hub.ClientCount() == 0 {
-				continue
+		case <-ticker.C:
+			log.Println("ALSA monitor: tick fired!")
+			tickCount++
+
+			clients := m.hub.ClientCount()
+
+			// Log every 50 ticks (5 seconds) for debugging
+			if tickCount%50 == 0 {
+				log.Printf("ALSA monitor: tick %d, clients=%d", tickCount, clients)
 			}
 
+			// Always poll ALSA state to detect external changes
+			// This is the key fix - don't skip polling based on client count
+
 			// Get current state and compare with last state
+			log.Println("ALSA monitor: calling getCurrentState...")
 			currentState := m.getCurrentState()
+			log.Printf("ALSA monitor: getCurrentState returned %v", currentState)
+			log.Printf("ALSA monitor: about to check nil")
 			if currentState == nil {
-				continue
+				log.Printf("ALSA monitor: getCurrentState returned nil - retrying in 1 second")
+				time.Sleep(1 * time.Second)
+				currentState = m.getCurrentState()
+				log.Printf("ALSA monitor: retry getCurrentState returned %v", currentState)
+				if currentState == nil {
+					log.Printf("ALSA monitor: getCurrentState still nil, skipping tick")
+					continue
+				}
 			}
 
 			m.mu.Lock()
-			if m.hasStateChanged(currentState) {
+			log.Printf("ALSA monitor: got lock, checking state change")
+			lastState := m.lastState
+			changed := m.hasStateChanged(currentState, lastState)
+			log.Printf("ALSA monitor: hasStateChanged returned %v", changed)
+			if changed {
+				log.Printf("ALSA monitor: state changed, broadcasting to %d clients", clients)
 				m.lastState = currentState
 				m.mu.Unlock()
-
-				// Broadcast the change
+				log.Printf("ALSA monitor: about to call broadcastStateChange")
 				m.broadcastStateChange(currentState)
+				log.Printf("ALSA monitor: broadcastStateChange returned")
 			} else {
 				m.mu.Unlock()
+				log.Printf("ALSA monitor: state unchanged")
 			}
 
 		case <-m.stopCh:
+			log.Printf("ALSA monitor: stop signal received")
 			return
 		}
 	}
@@ -226,11 +267,7 @@ func (m *Monitor) getCurrentState() *StateSnapshot {
 }
 
 // hasStateChanged compares the current state with the last state
-func (m *Monitor) hasStateChanged(current *StateSnapshot) bool {
-	m.mu.Lock()
-	last := m.lastState
-	m.mu.Unlock()
-
+func (m *Monitor) hasStateChanged(current, last *StateSnapshot) bool {
 	if last == nil {
 		return true // First time capturing state
 	}

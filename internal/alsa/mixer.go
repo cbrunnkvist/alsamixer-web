@@ -194,11 +194,11 @@ func (m *Mixer) GetMute(card uint, control string) (bool, error) {
 
 	ctl, err := mixer.CtlByName(control)
 	if err != nil {
-		return false, nil
+		return false, fmt.Errorf("control not found: %s", control)
 	}
 
 	if ctl.Type() != alsalib.SNDRV_CTL_ELEM_TYPE_BOOLEAN {
-		return false, nil
+		return false, fmt.Errorf("control '%s' is not boolean (type: %v)", control, ctl.Type())
 	}
 
 	val, err := ctl.Value(0)
@@ -226,11 +226,11 @@ func (m *Mixer) SetMute(card uint, control string, muted bool) error {
 
 	ctl, err := mixer.CtlByName(control)
 	if err != nil {
-		return err
+		return fmt.Errorf("control not found: %s", control)
 	}
 
 	if ctl.Type() != alsalib.SNDRV_CTL_ELEM_TYPE_BOOLEAN {
-		return fmt.Errorf("control '%s' is not boolean", control)
+		return fmt.Errorf("control '%s' is not boolean (type: %v)", control, ctl.Type())
 	}
 
 	val := 0
