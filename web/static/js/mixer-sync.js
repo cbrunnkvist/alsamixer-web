@@ -48,6 +48,64 @@
     if (label) {
       label.textContent = next ? 'Muted' : 'Unmuted'
     }
+
+    var srText = toggle.querySelector('.sr-only')
+    if (srText) {
+      var name = toggle.dataset.controlName || ''
+      srText.textContent = next ? 'Mute enabled for ' + name + '.' : 'Mute disabled for ' + name + '.'
+    }
+  }
+
+  function updateCapture(cardId, controlName, active) {
+    var control = findControl(cardId, controlName)
+    if (!control) return
+
+    var toggle = control.querySelector('.mixer-control__toggle--capture')
+    if (!toggle) return
+
+    var next = !!active
+    toggle.setAttribute('aria-checked', next ? 'true' : 'false')
+
+    var label = toggle.querySelector('.mixer-control__toggle-label')
+    if (label) {
+      label.textContent = next ? 'Capture On' : 'Capture Off'
+    }
+
+    var srText = toggle.querySelector('.sr-only')
+    if (srText) {
+      var name = toggle.dataset.controlName || ''
+      srText.textContent = next ? 'Capture enabled for ' + name + '.' : 'Capture disabled for ' + name + '.'
+    }
+  }
+
+  function handleToggleResponse(btn) {
+    if (!btn.classList.contains('mixer-control__toggle')) return
+
+    var kind = btn.dataset.controlKind
+    var cardId = btn.dataset.cardId
+    var controlName = btn.dataset.controlName
+
+    var current = btn.getAttribute('aria-checked') === 'true'
+    var next = !current
+    btn.setAttribute('aria-checked', next ? 'true' : 'false')
+
+    var label = btn.querySelector('.mixer-control__toggle-label')
+    if (label) {
+      if (kind === 'mute') {
+        label.textContent = next ? 'Muted' : 'Unmuted'
+      } else if (kind === 'capture') {
+        label.textContent = next ? 'Capture On' : 'Capture Off'
+      }
+    }
+
+    var srText = btn.querySelector('.sr-only')
+    if (srText && controlName) {
+      if (kind === 'mute') {
+        srText.textContent = next ? 'Mute enabled for ' + controlName + '.' : 'Mute disabled for ' + controlName + '.'
+      } else if (kind === 'capture') {
+        srText.textContent = next ? 'Capture enabled for ' + controlName + '.' : 'Capture disabled for ' + controlName + '.'
+      }
+    }
   }
 
   function handleMixerUpdate(payload) {
@@ -92,7 +150,17 @@
     })
   }
 
+  function setupHTMXToggleHandlers() {
+    document.body.addEventListener('htmx:afterRequest', function (event) {
+      var btn = event.target
+      if (btn && btn.classList.contains('mixer-control__toggle')) {
+        handleToggleResponse(btn)
+      }
+    })
+  }
+
   document.addEventListener('DOMContentLoaded', function () {
     setupSSE()
+    setupHTMXToggleHandlers()
   })
 })()

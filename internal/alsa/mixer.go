@@ -21,8 +21,9 @@ type Card struct {
 type Control struct {
 	Name    string // Control name
 	Type    string // Control type (e.g., "integer", "boolean")
-	Min     int64  // Minimum value
-	Max     int64  // Maximum value
+	Min     int64  // Minimum raw value
+	Max     int64  // Maximum raw value
+	Step    int64  // Step size for percentage calculation
 	Count   int    // Number of channels
 	IsMuted bool   // Mute state (if applicable)
 }
@@ -99,6 +100,10 @@ func (m *Mixer) ListControls(card uint) ([]Control, error) {
 			max, _ := ctl.RangeMax()
 			ctrl.Min = int64(min)
 			ctrl.Max = int64(max)
+			// Calculate step: percentage value per ALSA unit
+			if max > min {
+				ctrl.Step = int64(100 / (max - min))
+			}
 		case alsalib.SNDRV_CTL_ELEM_TYPE_BOOLEAN:
 			ctrl.Type = "boolean"
 		default:
@@ -137,6 +142,9 @@ func (m *Mixer) GetVolume(card uint, control string) ([]int, error) {
 
 	min, _ := ctl.RangeMin()
 	max, _ := ctl.RangeMax()
+	if max == min {
+		return nil, fmt.Errorf("control '%s' has invalid range (min equals max)", control)
+	}
 	val, err := ctl.Value(0)
 	if err != nil {
 		return nil, err
@@ -172,6 +180,9 @@ func (m *Mixer) SetVolume(card uint, control string, values []int) error {
 
 	min, _ := ctl.RangeMin()
 	max, _ := ctl.RangeMax()
+	if max == min {
+		return fmt.Errorf("control '%s' has invalid range (min equals max)", control)
+	}
 	v := values[0]
 	raw := min + (v*(max-min))/100
 	return ctl.SetValue(0, raw)

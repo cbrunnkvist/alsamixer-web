@@ -58,6 +58,33 @@ All primary build and test operations are managed via the `Makefile`.
     ```
     Replace `./internal/server` with the path to the package and `TestMyHandlerName` with the exact test function name.
 
+### E2E Tests with Playwright
+
+The project includes E2E tests using Playwright to verify UI functionality against the live server at `lemox.lan:8888`.
+
+**Prerequisites:**
+- Playwright is installed via `npm install` (dev dependency)
+- Brave browser must be available at `/Applications/Brave Browser.app/Contents/MacOS/Brave Browser`
+- Server must be running on `lemox.lan:8888`
+
+**Run All E2E Tests:**
+```bash
+node e2e.test.js
+```
+
+**Run Specific E2E Test File:**
+```bash
+node e2e-alsa-to-ui.test.js   # Tests ALSA→UI sync via SSE
+node e2e-mute.test.js          # Tests mute toggle functionality
+```
+
+**Test Files:**
+- `e2e.test.js` - Basic UI load and interaction tests
+- `e2e-alsa-to-ui.test.js` - Tests external ALSA changes reflected in UI via SSE
+- `e2e-mute.test.js` - Tests mute toggle UI↔ALSA synchronization
+
+**Note:** Tests use Brave browser in non-headless mode for debugging. Modify the test files to use `headless: true` for CI/automated runs.
+
 ### Go Toolchain Commands
 
 *   **Format Go Code**:

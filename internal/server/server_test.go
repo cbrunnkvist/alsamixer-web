@@ -143,7 +143,7 @@ func TestServerRoutes(t *testing.T) {
 			method:         "GET",
 			path:           "/?theme=unknown",
 			expectedStatus: http.StatusOK,
-			expectedBody:   "/static/themes/terminal.css",
+			expectedBody:   "/static/themes/linux-console.css",
 		},
 		{
 			name:           "OPTIONS request returns 200",
