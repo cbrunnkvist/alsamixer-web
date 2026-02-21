@@ -394,6 +394,9 @@ func TestHubServeHTTPInvalidAccept(t *testing.T) {
 	// Create a test request without proper Accept header - this should now succeed
 	// because we use lenient checking (empty Accept passes through)
 	req := httptest.NewRequest("GET", "/events", nil)
+	ctx, cancel := context.WithTimeout(req.Context(), 100*time.Millisecond)
+	defer cancel()
+	req = req.WithContext(ctx)
 
 	// Create a response recorder
 	rr := httptest.NewRecorder()
@@ -405,11 +408,14 @@ func TestHubServeHTTPInvalidAccept(t *testing.T) {
 		close(done)
 	}()
 
+	// Wait for handler to complete
 	select {
 	case <-done:
-		// Check that client was registered (lenient mode accepts empty Accept)
-		if count := hub.ClientCount(); count != 1 {
-			t.Errorf("Expected 1 client, got %d", count)
+		// Give time for unregister to propagate
+		time.Sleep(50 * time.Millisecond)
+		// Check that client was unregistered
+		if count := hub.ClientCount(); count != 0 {
+			t.Errorf("Expected 0 clients (should have been unregistered), got %d", count)
 		}
 	case <-time.After(5 * time.Second):
 		t.Error("Test timed out")

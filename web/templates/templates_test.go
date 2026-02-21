@@ -23,6 +23,7 @@ type ControlView struct {
 	VolumeAriaLabel string
 	VolumeMin       int
 	VolumeMax       int
+	VolumeStep      int
 	VolumeNow       int
 	VolumeText      string
 
@@ -86,6 +87,7 @@ func TestControlsTemplateExecutesWithMockData(t *testing.T) {
 						VolumeAriaLabel:  "Master volume",
 						VolumeMin:        0,
 						VolumeMax:        100,
+						VolumeStep:       1,
 						VolumeNow:        75,
 						VolumeText:       "75%",
 						HasMute:          true,
