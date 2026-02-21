@@ -3,17 +3,16 @@ package sse
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 )
 
-// Event represents a Server-Sent Event with type, data, and optional ID.
 type Event struct {
-	Type string      // Event type (e.g., "mixer-update", "volume-change")
-	Data interface{} // Event data (will be JSON-encoded)
-	ID   string      // Optional event ID for resuming connections
+	Type   string      // Event type (e.g., "mixer-update", "control-update")
+	Data   interface{} // Event data (JSON or HTML string)
+	IsHTML bool        // If true, Data is treated as raw HTML; otherwise JSON
+	ID     string      // Optional event ID for resuming connections
 }
 
-// String formats the event according to the SSE specification.
-// Format: "event: type\ndata: json\n\n" (with optional id field)
 func (e Event) String() string {
 	var result string
 
@@ -25,13 +24,24 @@ func (e Event) String() string {
 		result += fmt.Sprintf("event: %s\n", e.Type)
 	}
 
-	dataBytes, err := json.Marshal(e.Data)
-	if err != nil {
-		result += fmt.Sprintf("data: %s\n\n", fmt.Sprintf("error: %v", err))
-		return result
+	var dataStr string
+	if e.IsHTML {
+		dataStr = e.Data.(string)
+	} else {
+		dataBytes, err := json.Marshal(e.Data)
+		if err != nil {
+			result += fmt.Sprintf("data: %s\n\n", fmt.Sprintf("error: %v", err))
+			return result
+		}
+		dataStr = string(dataBytes)
 	}
 
-	result += fmt.Sprintf("data: %s\n\n", string(dataBytes))
+	dataStr = strings.ReplaceAll(dataStr, "\r\n", "\n")
+	lines := strings.Split(dataStr, "\n")
+	for _, line := range lines {
+		result += fmt.Sprintf("data: %s\n", line)
+	}
+	result += "\n"
 
 	return result
 }

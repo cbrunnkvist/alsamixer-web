@@ -1,7 +1,9 @@
 package sse
 
 import (
+	"log"
 	"net/http"
+	"strings"
 	"sync"
 )
 
@@ -43,12 +45,15 @@ func (h *Hub) Broadcast(event Event) {
 
 // Run starts the hub's main goroutine handling register/unregister/broadcast channels.
 func (h *Hub) Run() {
+	log.Printf("Hub.Run() started")
 	for {
 		select {
 		case client := <-h.register:
 			h.mu.Lock()
 			h.clients[client] = true
+			clientCount := len(h.clients)
 			h.mu.Unlock()
+			log.Printf("Hub: client registered, total clients: %d", clientCount)
 
 		case client := <-h.unregister:
 			h.mu.Lock()
@@ -56,7 +61,9 @@ func (h *Hub) Run() {
 				delete(h.clients, client)
 				client.Close()
 			}
+			clientCount := len(h.clients)
 			h.mu.Unlock()
+			log.Printf("Hub: client unregistered, total clients: %d", clientCount)
 
 		case event := <-h.broadcast:
 			h.mu.Lock()
@@ -96,17 +103,31 @@ func (h *Hub) ClientCount() int {
 
 // ServeHTTP handles HTTP requests and registers new clients.
 func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// Check if client supports SSE
-	if r.Header.Get("Accept") != "text/event-stream" {
+	log.Printf("SSE request received: %s %s Accept=%s", r.Method, r.URL.Path, r.Header.Get("Accept"))
+
+	// Check request method (must be GET)
+	if r.Method != http.MethodGet {
+		log.Printf("SSE: rejecting - wrong method")
+		http.Error(w, "Expected GET method", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Relaxed Accept header check - look for text/event-stream
+	accept := r.Header.Get("Accept")
+	if accept != "" && !strings.Contains(accept, "text/event-stream") {
+		log.Printf("SSE: rejecting - Accept header doesn't contain text/event-stream")
 		http.Error(w, "Expected Accept: text/event-stream", http.StatusBadRequest)
 		return
 	}
 
+	log.Printf("SSE: creating client")
 	// Create and register new client
-	client := NewClient(w)
+	client := NewClient(w, r.Context())
 	h.Register(client)
 	defer h.Unregister(client)
 
+	log.Printf("SSE: starting client Run()")
 	// Start client writer
 	client.Run()
+	log.Printf("SSE: client Run() returned")
 }

@@ -39,7 +39,7 @@ const (
 	ThemeLinuxConsole Theme = "linux-console"
 )
 
-const defaultTheme = ThemeTerminal
+const defaultTheme = ThemeLinuxConsole
 
 var allowedThemes = map[Theme]struct{}{
 	ThemeTerminal:     {},
@@ -75,6 +75,7 @@ type controlView struct {
 	HasCapture       bool
 	VolumeMin        int
 	VolumeMax        int
+	VolumeStep       int
 	VolumeNow        int
 	VolumeText       string
 	VolumeAriaLabel  string
@@ -203,6 +204,7 @@ func (s *Server) loadCardsForFilter(selectedCardID int) []cardView {
 				HasCapture:       false,
 				VolumeMin:        0,
 				VolumeMax:        100,
+				VolumeStep:       int(ctrl.Step),
 				VolumeNow:        volumeNow,
 				VolumeText:       fmt.Sprintf("%d%%", volumeNow),
 				VolumeAriaLabel:  fmt.Sprintf("%s volume", ctrl.Name),

@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -86,16 +87,20 @@ func (s *Server) MuteHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Broadcast SSE event so other clients stay in sync.
 	if s.hub != nil {
-		go s.hub.Broadcast(sse.Event{
-			Type: "mute-change",
-			Data: map[string]interface{}{
-				"card":           cardID,
-				"control":        control,
-				"muted":          newMuted,
-				"client_muted":   clientMuted,
-				"previous_muted": currentMuted,
-			},
-		})
+		ctrl := s.getControlView(cardID, control)
+		if ctrl != nil {
+			html, err := s.renderControlHTML(*ctrl)
+			if err != nil {
+				log.Printf("failed to render control HTML: %v", err)
+			} else {
+				payload := fmt.Sprintf(`<article id="control-%d-%s" hx-swap-oob="outerHTML">%s</article>`, cardID, control, html)
+				go s.hub.Broadcast(sse.Event{
+					Type:   "control-update",
+					Data:   payload,
+					IsHTML: true,
+				})
+			}
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -167,14 +172,20 @@ func (s *Server) VolumeHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Broadcast SSE event so other clients stay in sync.
 	if s.hub != nil {
-		go s.hub.Broadcast(sse.Event{
-			Type: "volume-change",
-			Data: map[string]interface{}{
-				"card":    cardID,
-				"control": control,
-				"volume":  volume,
-			},
-		})
+		ctrl := s.getControlView(cardID, control)
+		if ctrl != nil {
+			html, err := s.renderControlHTML(*ctrl)
+			if err != nil {
+				log.Printf("failed to render control HTML: %v", err)
+			} else {
+				payload := fmt.Sprintf(`<article id="control-%d-%s" hx-swap-oob="outerHTML">%s</article>`, cardID, control, html)
+				go s.hub.Broadcast(sse.Event{
+					Type:   "control-update",
+					Data:   payload,
+					IsHTML: true,
+				})
+			}
+		}
 	}
 
 	w.WriteHeader(http.StatusNoContent)
@@ -241,16 +252,20 @@ func (s *Server) CaptureHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if s.hub != nil {
-		go s.hub.Broadcast(sse.Event{
-			Type: "capture-change",
-			Data: map[string]interface{}{
-				"card":            cardID,
-				"control":         control,
-				"active":          newActive,
-				"client_active":   clientActive,
-				"previous_active": currentActive,
-			},
-		})
+		ctrl := s.getControlView(cardID, control)
+		if ctrl != nil {
+			html, err := s.renderControlHTML(*ctrl)
+			if err != nil {
+				log.Printf("failed to render control HTML: %v", err)
+			} else {
+				payload := fmt.Sprintf(`<article id="control-%d-%s" hx-swap-oob="outerHTML">%s</article>`, cardID, control, html)
+				go s.hub.Broadcast(sse.Event{
+					Type:   "control-update",
+					Data:   payload,
+					IsHTML: true,
+				})
+			}
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")

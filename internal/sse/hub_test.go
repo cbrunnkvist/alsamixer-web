@@ -2,6 +2,7 @@ package sse
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -52,8 +53,8 @@ func TestHubRegisterUnregister(t *testing.T) {
 	go hub.Run()
 
 	// Create mock clients
-	client1 := NewClient(newMockResponseWriter())
-	client2 := NewClient(newMockResponseWriter())
+	client1 := NewClient(newMockResponseWriter(), context.Background())
+	client2 := NewClient(newMockResponseWriter(), context.Background())
 
 	// Register clients
 	hub.Register(client1)
@@ -101,9 +102,9 @@ func TestHubBroadcast(t *testing.T) {
 	writer3 := newMockResponseWriter()
 
 	// Create and register clients
-	client1 := NewClient(writer1)
-	client2 := NewClient(writer2)
-	client3 := NewClient(writer3)
+	client1 := NewClient(writer1, context.Background())
+	client2 := NewClient(writer2, context.Background())
+	client3 := NewClient(writer3, context.Background())
 
 	hub.Register(client1)
 	hub.Register(client2)
@@ -155,8 +156,8 @@ func TestHubBroadcastWithDisconnection(t *testing.T) {
 	writer2 := newMockResponseWriter()
 
 	// Create and register clients
-	client1 := NewClient(writer1)
-	client2 := NewClient(writer2)
+	client1 := NewClient(writer1, context.Background())
+	client2 := NewClient(writer2, context.Background())
 
 	hub.Register(client1)
 	hub.Register(client2)
@@ -212,7 +213,7 @@ func TestHubThreadSafety(t *testing.T) {
 		go func(id int) {
 			defer wg.Done()
 			for j := 0; j < numOperations; j++ {
-				client := NewClient(newMockResponseWriter())
+				client := NewClient(newMockResponseWriter(), context.Background())
 				hub.Register(client)
 				time.Sleep(1 * time.Millisecond)
 			}
@@ -318,7 +319,7 @@ func TestEventString(t *testing.T) {
 // TestClientWriteEvent tests the Client.WriteEvent method
 func TestClientWriteEvent(t *testing.T) {
 	writer := newMockResponseWriter()
-	client := NewClient(writer)
+	client := NewClient(writer, context.Background())
 
 	// Test successful write
 	event := Event{
@@ -340,7 +341,7 @@ func TestClientWriteEvent(t *testing.T) {
 	}
 
 	// Test write to full channel
-	client2 := NewClient(newMockResponseWriter())
+	client2 := NewClient(newMockResponseWriter(), context.Background())
 	// Fill the channel
 	for i := 0; i < 10; i++ {
 		client2.WriteEvent(event)
@@ -385,27 +386,60 @@ func TestHubServeHTTP(t *testing.T) {
 }
 
 // TestHubServeHTTPInvalidAccept tests the HTTP handler with invalid Accept header
+// Note: With relaxed checking, empty or non-matching Accept is allowed (lenient mode)
 func TestHubServeHTTPInvalidAccept(t *testing.T) {
 	hub := NewHub()
 	go hub.Run()
 
-	// Create a test request without proper Accept header
+	// Create a test request without proper Accept header - this should now succeed
+	// because we use lenient checking (empty Accept passes through)
 	req := httptest.NewRequest("GET", "/events", nil)
 
 	// Create a response recorder
 	rr := httptest.NewRecorder()
 
 	// Call the handler
-	hub.ServeHTTP(rr, req)
+	done := make(chan struct{})
+	go func() {
+		hub.ServeHTTP(rr, req)
+		close(done)
+	}()
 
-	// Should return 400 Bad Request
-	if status := rr.Code; status != http.StatusBadRequest {
-		t.Errorf("Expected status %d, got %d", http.StatusBadRequest, status)
+	select {
+	case <-done:
+		// Check that client was registered (lenient mode accepts empty Accept)
+		if count := hub.ClientCount(); count != 1 {
+			t.Errorf("Expected 1 client, got %d", count)
+		}
+	case <-time.After(5 * time.Second):
+		t.Error("Test timed out")
 	}
+}
 
-	// Check error message
-	expectedError := "Expected Accept: text/event-stream"
-	if !strings.Contains(rr.Body.String(), expectedError) {
-		t.Errorf("Expected error message containing '%s', got '%s'", expectedError, rr.Body.String())
+// TestHubServeHTTPWrongAcceptType tests with a non-SSE Accept header
+func TestHubServeHTTPWrongAcceptType(t *testing.T) {
+	hub := NewHub()
+	go hub.Run()
+
+	// Create a test request with wrong Accept header (should be rejected)
+	req := httptest.NewRequest("GET", "/events", nil)
+	req.Header.Set("Accept", "application/json")
+
+	rr := httptest.NewRecorder()
+
+	done := make(chan struct{})
+	go func() {
+		hub.ServeHTTP(rr, req)
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		// Should return 400 Bad Request since Accept contains non-SSE type
+		if status := rr.Code; status != http.StatusBadRequest {
+			t.Errorf("Expected status %d, got %d", http.StatusBadRequest, status)
+		}
+	case <-time.After(5 * time.Second):
+		t.Error("Test timed out")
 	}
 }

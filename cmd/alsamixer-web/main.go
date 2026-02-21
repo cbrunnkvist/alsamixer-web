@@ -15,6 +15,11 @@ import (
 	"github.com/user/alsamixer-web/internal/sse"
 )
 
+func init() {
+	log.SetOutput(os.Stdout)
+	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
+}
+
 func main() {
 	log.Println("alsamixer-web starting...")
 

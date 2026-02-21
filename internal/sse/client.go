@@ -1,14 +1,21 @@
 package sse
 
 import (
+	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"sync"
+	"time"
 )
+
+const heartbeatInterval = 25 * time.Second
 
 // Client represents an SSE client connection.
 type Client struct {
 	writer  http.ResponseWriter
+	ctx     context.Context
+	cancel  context.CancelFunc
 	eventCh chan Event
 	done    chan struct{}
 	closed  bool
@@ -16,10 +23,13 @@ type Client struct {
 }
 
 // NewClient creates a new SSE client.
-func NewClient(w http.ResponseWriter) *Client {
+func NewClient(w http.ResponseWriter, ctx context.Context) *Client {
+	ctx, cancel := context.WithCancel(ctx)
 	return &Client{
 		writer:  w,
-		eventCh: make(chan Event, 10), // Buffered channel to prevent blocking
+		ctx:     ctx,
+		cancel:  cancel,
+		eventCh: make(chan Event, 10),
 		done:    make(chan struct{}),
 	}
 }
@@ -47,6 +57,7 @@ func (c *Client) Close() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if !c.closed {
+		c.cancel()
 		close(c.done)
 		c.closed = true
 	}
@@ -54,6 +65,7 @@ func (c *Client) Close() {
 
 // Run starts the client's event writer goroutine.
 func (c *Client) Run() {
+	log.Printf("SSE Client.Run() started")
 	// Set SSE headers
 	c.writer.Header().Set("Content-Type", "text/event-stream")
 	c.writer.Header().Set("Cache-Control", "no-cache")
@@ -62,12 +74,35 @@ func (c *Client) Run() {
 
 	// Flush headers immediately
 	if flusher, ok := c.writer.(http.Flusher); ok {
+		log.Printf("SSE Client.Run() flushing headers")
 		flusher.Flush()
+	} else {
+		log.Printf("SSE Client.Run() WARNING: ResponseWriter is not a Flusher")
 	}
 
-	// Write events as they arrive
+	log.Printf("SSE Client.Run() entering event loop")
+
+	heartbeat := time.NewTicker(heartbeatInterval)
+	defer heartbeat.Stop()
+
 	for {
 		select {
+		case <-c.ctx.Done():
+			log.Printf("SSE Client.Run() context cancelled")
+			return
+		case <-c.done:
+			log.Printf("SSE Client.Run() done signal received")
+			return
+		case <-heartbeat.C:
+			// Send heartbeat comment to keep connection alive
+			if _, err := fmt.Fprint(c.writer, ": heartbeat\n\n"); err != nil {
+				log.Printf("SSE Client.Run() heartbeat failed: %v", err)
+				c.Close()
+				return
+			}
+			if flusher, ok := c.writer.(http.Flusher); ok {
+				flusher.Flush()
+			}
 		case event, ok := <-c.eventCh:
 			if !ok {
 				return
@@ -75,6 +110,7 @@ func (c *Client) Run() {
 
 			// Write the event
 			if _, err := fmt.Fprint(c.writer, event.String()); err != nil {
+				log.Printf("SSE Client.Run() write failed: %v", err)
 				c.Close()
 				return
 			}
@@ -83,9 +119,6 @@ func (c *Client) Run() {
 			if flusher, ok := c.writer.(http.Flusher); ok {
 				flusher.Flush()
 			}
-
-		case <-c.done:
-			return
 		}
 	}
 }
