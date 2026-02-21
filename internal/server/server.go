@@ -110,6 +110,36 @@ func controlViewType(controlName string) string {
 	return "playback"
 }
 
+// shouldSkipControl returns true if the control should be hidden from the UI.
+// This matches alsamixer's filtering logic to show only user-relevant controls.
+func shouldSkipControl(controlName, view string) bool {
+	name := strings.ToLower(controlName)
+
+	// Skip internal/low-level ALSA controls that users shouldn't manipulate
+	skipPatterns := []string{
+		"pcm",         // Low-level PCM controls
+		"rate",        // Sample rate controls
+		"clock",       // Clock source
+		"iec958",      // Raw digital I/O (shown as S/PDIF in alsamixer, but only enum type)
+		"channel map", // Channel mapping
+		"routing",     // Signal routing
+		"mux",         // Multiplexer
+		"loopback",    // Loopback controls
+	}
+
+	for _, pattern := range skipPatterns {
+		if strings.Contains(name, pattern) {
+			// Exception: Some controls like "Pre-amp" should be shown
+			if strings.Contains(name, "pre-amp") {
+				return false
+			}
+			return true
+		}
+	}
+
+	return false
+}
+
 func (s *Server) loadCards() []cardView {
 	return s.loadCardsForFilter(-1)
 }
@@ -141,11 +171,19 @@ func (s *Server) loadCardsForFilter(selectedCardID int) []cardView {
 		}
 
 		for _, ctrl := range controls {
+			// Determine view type based on control name
+			view := controlViewType(ctrl.Name)
+
+			// Only show controls that have volume (integer type with range)
 			if ctrl.Type != "integer" {
 				continue
 			}
 
-			view := controlViewType(ctrl.Name)
+			// Additional filtering: skip internal ALSA controls that aren't user-relevant
+			// This matches alsamixer's behavior of filtering out low-level PCM controls
+			if shouldSkipControl(ctrl.Name, view) {
+				continue
+			}
 
 			volumes, err := s.mixer.GetVolume(card.ID, ctrl.Name)
 			volumeNow := 0
@@ -187,6 +225,59 @@ func mustParseTemplates() *template.Template {
 	return template.Must(template.ParseFS(web.TemplateFS(), "base.html", "index.html", "controls.html"))
 }
 
+func (s *Server) renderControlHTML(ctrl controlView) (string, error) {
+	var buf strings.Builder
+	if err := s.tmpl.ExecuteTemplate(&buf, "control", ctrl); err != nil {
+		return "", err
+	}
+	return buf.String(), nil
+}
+
+func (s *Server) getControlView(cardID uint, controlName string) *controlView {
+	controls, err := s.mixer.ListControls(cardID)
+	if err != nil {
+		return nil
+	}
+
+	for _, ctrl := range controls {
+		if ctrl.Name != controlName {
+			continue
+		}
+
+		volumes, err := s.mixer.GetVolume(cardID, controlName)
+		volumeNow := 0
+		if err == nil && len(volumes) > 0 {
+			volumeNow = volumes[0]
+		}
+
+		muted, muteErr := s.mixer.GetMute(cardID, controlName)
+		hasMute := muteErr == nil
+
+		view := controlViewType(ctrl.Name)
+
+		return &controlView{
+			ID:               controlID(cardID, ctrl.Name),
+			CardID:           cardID,
+			Name:             ctrl.Name,
+			HasVolume:        ctrl.Type == "integer",
+			HasMute:          hasMute,
+			HasCapture:       false,
+			VolumeMin:        0,
+			VolumeMax:        100,
+			VolumeNow:        volumeNow,
+			VolumeText:       fmt.Sprintf("%d%%", volumeNow),
+			VolumeAriaLabel:  fmt.Sprintf("%s volume", ctrl.Name),
+			MuteAriaLabel:    fmt.Sprintf("%s mute", ctrl.Name),
+			CaptureAriaLabel: fmt.Sprintf("%s capture", ctrl.Name),
+			Muted:            muted,
+			CaptureActive:    false,
+			View:             view,
+		}
+	}
+
+	return nil
+}
+
 func normalizeTheme(raw string) Theme {
 	if raw == "" {
 		return defaultTheme
@@ -225,7 +316,7 @@ func NewServer(cfg *config.Config, hub *sse.Hub) *Server {
 		Addr:         addr,
 		Handler:      s.loggingMiddleware(s.corsMiddleware(s.mux)),
 		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
+		WriteTimeout: 0, // No write timeout - needed for SSE connections
 		IdleTimeout:  60 * time.Second,
 	}
 
@@ -350,6 +441,19 @@ type responseWriter struct {
 func (rw *responseWriter) WriteHeader(code int) {
 	rw.statusCode = code
 	rw.ResponseWriter.WriteHeader(code)
+}
+
+func (rw *responseWriter) Flush() {
+	if flusher, ok := rw.ResponseWriter.(http.Flusher); ok {
+		flusher.Flush()
+	}
+}
+
+func (rw *responseWriter) Hijack() (interface{}, interface{}, error) {
+	if hijacker, ok := rw.ResponseWriter.(http.Hijacker); ok {
+		return hijacker.Hijack()
+	}
+	return nil, nil, fmt.Errorf("response writer does not implement http.Hijacker")
 }
 
 // Start begins the HTTP server.
