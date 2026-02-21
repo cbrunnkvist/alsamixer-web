@@ -16,6 +16,7 @@ type Control struct {
 	Type    string
 	Min     int64
 	Max     int64
+	Step    int64
 	Count   int
 	IsMuted bool
 }
