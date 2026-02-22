@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/user/alsamixer-web/internal/alsa"
 	"github.com/user/alsamixer-web/internal/sse"
@@ -30,6 +31,8 @@ var newMixer = func() mixer {
 // MuteHandler handles POST /control/mute requests from HTMX
 // toggle buttons. It toggles the mute state of a control and
 // broadcasts an SSE event so all connected clients can update.
+// MuteHandler handles POST /control/mute requests from HTMX toggle buttons.
+// It toggles the mute state of a control and broadcasts an SSE event.
 func (s *Server) MuteHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -55,8 +58,7 @@ func (s *Server) MuteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	cardID := uint(cardValue)
 
-	// Current state as reported by the client; used only for
-	// diagnostics and future reconciliation.
+	// Current state as reported by the client; used only for diagnostics
 	clientMuted := false
 	if v := r.Form.Get("muted"); v != "" {
 		if parsed, err := strconv.ParseBool(v); err == nil {
@@ -73,14 +75,16 @@ func (s *Server) MuteHandler(w http.ResponseWriter, r *http.Request) {
 		defer closer.Close()
 	}
 
-	currentMuted, err := m.GetMute(cardID, control)
+	// Use the corresponding switch control for mute
+	switchControl := strings.Replace(control, " Volume", " Switch", 1)
+	currentMuted, err := m.GetMute(cardID, switchControl)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("failed to get mute state: %v", err), http.StatusInternalServerError)
 		return
 	}
 
 	newMuted := !currentMuted
-	if err := m.SetMute(cardID, control, newMuted); err != nil {
+	if err := m.SetMute(cardID, switchControl, newMuted); err != nil {
 		http.Error(w, fmt.Sprintf("failed to set mute state: %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -236,7 +240,9 @@ func (s *Server) CaptureHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Capture "active" is modelled as not muted.
-	currentMuted, err := m.GetMute(cardID, control)
+	// Use the corresponding switch control
+	switchControl := strings.Replace(control, " Volume", " Switch", 1)
+	currentMuted, err := m.GetMute(cardID, switchControl)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("failed to get capture state: %v", err), http.StatusInternalServerError)
 		return
@@ -246,7 +252,7 @@ func (s *Server) CaptureHandler(w http.ResponseWriter, r *http.Request) {
 	newActive := !currentActive
 	newMuted := !newActive
 
-	if err := m.SetMute(cardID, control, newMuted); err != nil {
+	if err := m.SetMute(cardID, switchControl, newMuted); err != nil {
 		http.Error(w, fmt.Sprintf("failed to set capture state: %v", err), http.StatusInternalServerError)
 		return
 	}

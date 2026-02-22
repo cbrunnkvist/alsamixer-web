@@ -192,8 +192,23 @@ func (s *Server) loadCardsForFilter(selectedCardID int) []cardView {
 				volumeNow = volumes[0]
 			}
 
-			muted, muteErr := s.mixer.GetMute(card.ID, ctrl.Name)
+			// Check if there's a corresponding mute switch (ends with " Switch")
+			muteControlName := strings.Replace(ctrl.Name, " Volume", " Switch", 1)
+			muted, muteErr := s.mixer.GetMute(card.ID, muteControlName)
 			hasMute := muteErr == nil
+			if muteErr != nil {
+				log.Printf("DEBUG: GetMute for %s failed: %v", muteControlName, muteErr)
+			}
+
+			// Check if there's a corresponding capture switch (for capture controls)
+			var hasCapture bool
+			var captureActive bool
+			if view == "capture" {
+				captureControlName := strings.Replace(ctrl.Name, " Volume", " Switch", 1)
+				capMuted, capErr := s.mixer.GetMute(card.ID, captureControlName)
+				hasCapture = capErr == nil
+				captureActive = !capMuted // Capture active means not muted
+			}
 
 			cv.Controls = append(cv.Controls, controlView{
 				ID:               controlID(card.ID, ctrl.Name),
@@ -201,7 +216,7 @@ func (s *Server) loadCardsForFilter(selectedCardID int) []cardView {
 				Name:             ctrl.Name,
 				HasVolume:        true,
 				HasMute:          hasMute,
-				HasCapture:       false,
+				HasCapture:       hasCapture,
 				VolumeMin:        0,
 				VolumeMax:        100,
 				VolumeStep:       int(ctrl.Step),
@@ -211,7 +226,7 @@ func (s *Server) loadCardsForFilter(selectedCardID int) []cardView {
 				MuteAriaLabel:    fmt.Sprintf("%s mute", ctrl.Name),
 				CaptureAriaLabel: fmt.Sprintf("%s capture", ctrl.Name),
 				Muted:            muted,
-				CaptureActive:    false,
+				CaptureActive:    captureActive,
 				View:             view,
 			})
 		}
@@ -252,10 +267,22 @@ func (s *Server) getControlView(cardID uint, controlName string) *controlView {
 			volumeNow = volumes[0]
 		}
 
-		muted, muteErr := s.mixer.GetMute(cardID, controlName)
+		// Check if there's a corresponding mute switch (ends with " Switch")
+		muteControlName := fmt.Sprintf("%s Switch", controlName)
+		muted, muteErr := s.mixer.GetMute(cardID, muteControlName)
 		hasMute := muteErr == nil
 
 		view := controlViewType(ctrl.Name)
+
+		// Check if there's a corresponding capture switch (for capture controls)
+		var hasCapture bool
+		var captureActive bool
+		if view == "capture" {
+			captureControlName := fmt.Sprintf("%s Switch", controlName)
+			capMuted, capErr := s.mixer.GetMute(cardID, captureControlName)
+			hasCapture = capErr == nil
+			captureActive = !capMuted // Capture active means not muted
+		}
 
 		return &controlView{
 			ID:               controlID(cardID, ctrl.Name),
@@ -263,7 +290,7 @@ func (s *Server) getControlView(cardID uint, controlName string) *controlView {
 			Name:             ctrl.Name,
 			HasVolume:        ctrl.Type == "integer",
 			HasMute:          hasMute,
-			HasCapture:       false,
+			HasCapture:       hasCapture,
 			VolumeMin:        0,
 			VolumeMax:        100,
 			VolumeNow:        volumeNow,
@@ -272,7 +299,7 @@ func (s *Server) getControlView(cardID uint, controlName string) *controlView {
 			MuteAriaLabel:    fmt.Sprintf("%s mute", ctrl.Name),
 			CaptureAriaLabel: fmt.Sprintf("%s capture", ctrl.Name),
 			Muted:            muted,
-			CaptureActive:    false,
+			CaptureActive:    captureActive,
 			View:             view,
 		}
 	}
