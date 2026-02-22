@@ -1,11 +1,18 @@
 const { chromium } = require('playwright');
 const { exec } = require('child_process');
 
-const BASE_URL = 'http://lemox.lan:8888';
+const BASE_URL = process.env.E2E_BASE_URL;
+if (!BASE_URL) {
+    console.error('Error: E2E_BASE_URL environment variable is required');
+    process.exit(1);
+}
 
-function sshExec(cmd) {
+const SERVER_CMD_PREFIX = process.env.E2E_SERVER_CMD_PREFIX || '';
+
+function serverExec(cmd) {
     return new Promise((resolve, reject) => {
-        exec(`ssh root@lemox.lan "${cmd}"`, (err, stdout, stderr) => {
+        const fullCmd = SERVER_CMD_PREFIX ? `${SERVER_CMD_PREFIX} "${cmd}"` : cmd;
+        exec(fullCmd, (err, stdout, stderr) => {
             if (err) reject(err);
             else resolve(stdout);
         });
@@ -43,7 +50,7 @@ async function runTests() {
     
     // Get initial ALSA state for Master control
     await test('Get initial ALSA Master mute state', async () => {
-        const output = await sshExec("amixer -c 1 sget 'Master' | grep -i 'mono'");
+        const output = await serverExec("amixer -c 1 sget 'Master' | grep -i 'mono'");
         console.log(`  ALSA output: ${output.trim()}`);
     });
     
@@ -92,7 +99,7 @@ async function runTests() {
     
     // Verify ALSA state changed
     await test('Verify ALSA mute state changed', async () => {
-        const output = await sshExec("amixer -c 1 sget 'Master' | grep -i 'mono'");
+        const output = await serverExec("amixer -c 1 sget 'Master' | grep -i 'mono'");
         console.log(`  ALSA output: ${output.trim()}`);
         
         // Check if output contains "[on]" or "[off]"
@@ -119,17 +126,17 @@ async function runTests() {
         console.log('  Toggle successful');
     });
     
-    // Test ALSA→UI: External amixer change reflected in UI
-    await test('ALSA→UI: External amixer mute change reflected in UI', async () => {
-        // First, ensure Master is unmuted via amixer
-        await sshExec("amixer -c 1 sset 'Master' unmute");
+     // Test ALSA→UI: External amixer change reflected in UI
+     await test('ALSA→UI: External amixer mute change reflected in UI', async () => {
+         // First, ensure Master is unmuted via amixer
+         await serverExec("amixer -c 1 sset 'Master' unmute");
         await page.waitForTimeout(500);
         
-        let output = await sshExec("amixer -c 1 sget 'Master' | grep -i 'mono'");
+        let output = await serverExec("amixer -c 1 sget 'Master' | grep -i 'mono'");
         console.log(`  After unmute: ${output.trim()}`);
         
-        // Now mute via amixer
-        await sshExec("amixer -c 1 sset 'Master' mute");
+         // Now mute via amixer
+         await serverExec("amixer -c 1 sset 'Master' mute");
         await page.waitForTimeout(2000); // Wait for SSE broadcast
         
         // Reload page to get fresh state from server
@@ -146,9 +153,9 @@ async function runTests() {
         }
     });
     
-    // Test unmute via amixer
-    await test('ALSA→UI: External amixer unmute reflected in UI', async () => {
-        await sshExec("amixer -c 1 sset 'Master' unmute");
+     // Test unmute via amixer
+     await test('ALSA→UI: External amixer unmute reflected in UI', async () => {
+         await serverExec("amixer -c 1 sset 'Master' unmute");
         await page.waitForTimeout(2000);
         
         await page.reload();

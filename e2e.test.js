@@ -1,6 +1,10 @@
 const { chromium } = require('playwright');
 
-const BASE_URL = 'http://lemox.lan:8888';
+const BASE_URL = process.env.E2E_BASE_URL;
+if (!BASE_URL) {
+    console.error('Error: E2E_BASE_URL environment variable is required');
+    process.exit(1);
+}
 
 async function runTests() {
     console.log('Starting Playwright E2E tests...');

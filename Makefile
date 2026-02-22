@@ -1,4 +1,4 @@
-.PHONY: test run clean alsamixer-web dist build-linux-arm64 build-linux-amd64 deploy-lemox
+.PHONY: test run clean alsamixer-web dist build-linux-arm64 build-linux-amd64 deploy
 
 VERSION ?= $(shell git describe --tags --always --dirty --match "v*")
 ifeq ($(VERSION),)
@@ -34,10 +34,17 @@ build-linux-amd64: dist builder-image
 		go build -ldflags "-s -w -X main.version=$(VERSION)" \
 		-o dist/alsamixer-web-linux-amd64 ./cmd/alsamixer-web
 
-deploy-lemox:
-	$(MAKE) build-linux-amd64
-	scp dist/alsamixer-web-linux-amd64 root@lemox.lan:/root/work/alsamixer-web/alsamixer-web
-	ssh root@lemox.lan "chmod +x /root/work/alsamixer-web/alsamixer-web"
+DEPLOY_TARGET ?=
+DEPLOY_PATH ?=
+
+deploy: build-linux-amd64
+	@if [ -z "$(DEPLOY_TARGET)" ] || [ -z "$(DEPLOY_PATH)" ]; then \
+		echo "Error: DEPLOY_TARGET and DEPLOY_PATH must be set"; \
+		echo "Usage: make deploy DEPLOY_TARGET=user@host DEPLOY_PATH=/path/to/dest"; \
+		exit 1; \
+	fi
+	scp dist/alsamixer-web-linux-amd64 $(DEPLOY_TARGET):$(DEPLOY_PATH)/alsamixer-web
+	ssh $(DEPLOY_TARGET) "chmod +x $(DEPLOY_PATH)/alsamixer-web"
 
 clean:
 	rm -rf alsamixer-web dist/

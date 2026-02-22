@@ -1,12 +1,18 @@
 const { chromium } = require('playwright');
 const { exec } = require('child_process');
 
-const BASE_URL = 'http://lemox.lan:8888';
+const BASE_URL = process.env.E2E_BASE_URL;
+if (!BASE_URL) {
+    console.error('Error: E2E_BASE_URL environment variable is required');
+    process.exit(1);
+}
 
-// Helper to run SSH command
-function sshExec(cmd) {
+const SERVER_CMD_PREFIX = process.env.E2E_SERVER_CMD_PREFIX || '';
+
+function serverExec(cmd) {
     return new Promise((resolve, reject) => {
-        exec(`ssh root@lemox.lan "${cmd}"`, (err, stdout, stderr) => {
+        const fullCmd = SERVER_CMD_PREFIX ? `${SERVER_CMD_PREFIX} "${cmd}"` : cmd;
+        exec(fullCmd, (err, stdout, stderr) => {
             if (err) reject(err);
             else resolve(stdout);
         });
@@ -44,7 +50,7 @@ async function runTests() {
     
     // Get initial ALSA Master volume
     await test('Get initial ALSA Master volume', async () => {
-        const output = await sshExec("amixer -c 1 sget 'Master' | grep 'Mono:'");
+        const output = await serverExec("amixer -c 1 sget 'Master' | grep 'Mono:'");
         console.log(`  ALSA output: ${output.trim()}`);
         const match = output.match(/Mono:.*Playback\s+(\d+)/);
         if (!match) throw new Error('Could not parse ALSA output');
@@ -67,13 +73,13 @@ async function runTests() {
         console.log(`  Master-related sliders: ${count}`);
     });
     
-    // Change ALSA volume externally
-    const targetVolume = 30;
-    await test(`Change ALSA Master to ${targetVolume}% via amixer`, async () => {
-        await sshExec(`amixer -c 1 sset 'Master' ${targetVolume}%`);
+     // Change ALSA volume externally
+     const targetVolume = 30;
+     await test(`Change ALSA Master to ${targetVolume}% via amixer`, async () => {
+         await serverExec(`amixer -c 1 sset 'Master' ${targetVolume}%`);
         await page.waitForTimeout(500);
         
-        const output = await sshExec("amixer -c 1 sget 'Master' | grep 'Mono:'");
+        const output = await serverExec("amixer -c 1 sget 'Master' | grep 'Mono:'");
         console.log(`  ALSA output: ${output.trim()}`);
     });
     

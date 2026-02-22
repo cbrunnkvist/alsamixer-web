@@ -32,7 +32,7 @@ All primary build and test operations are managed via the `Makefile`.
     ```
     Removes generated binaries (`alsamixer-web`) and the `dist/` directory.
 
-### Cross-Compilation & Deployment (for `lemox.lan` or Linux targets)
+### Cross-Compilation & Deployment
 
 *   **Build for Linux AMD64**:
     ```bash
@@ -46,11 +46,16 @@ All primary build and test operations are managed via the `Makefile`.
     ```
     Cross-compiles the `alsamixer-web` binary for `linux/arm64` architecture, placing it in `dist/`.
 
-*   **Deploy to `lemox.lan` (builds `linux/amd64` and `scp`s)**:
+*   **Deploy to Remote Server**:
     ```bash
-    make deploy-lemox
+    make deploy DEPLOY_TARGET=user@host DEPLOY_PATH=/path/to/dest
     ```
-    This target builds the `linux/amd64` binary and then uses `scp` to transfer it to `root@lemox.lan:/root/work/alsamixer-web/alsamixer-web`, also setting execute permissions.
+    This target builds the `linux/amd64` binary and then uses `scp` to transfer it to the specified destination, also setting execute permissions. Replace `user@host` with your target server and `/path/to/dest` with the directory where you want to install the binary.
+
+    Example usage:
+    ```bash
+    make deploy DEPLOY_TARGET=root@lemox.lan DEPLOY_PATH=/root/work/alsamixer-web
+    ```
 
 *   **Run Specific Go Test**:
     ```bash
@@ -60,22 +65,31 @@ All primary build and test operations are managed via the `Makefile`.
 
 ### E2E Tests with Playwright
 
-The project includes E2E tests using Playwright to verify UI functionality against the live server at `lemox.lan:8888`.
+The project includes E2E tests using Playwright to verify UI functionality. Tests require configuration via environment variables.
 
 **Prerequisites:**
 - Playwright is installed via `npm install` (dev dependency)
 - Brave browser must be available at `/Applications/Brave Browser.app/Contents/MacOS/Brave Browser`
-- Server must be running on `lemox.lan:8888`
+
+**Environment Variables:**
+- `E2E_BASE_URL`: **Required** - URL of the running alsamixer-web server (e.g., `http://localhost:8888` or `http://lemox.lan:8888`)
+- `E2E_SERVER_CMD_PREFIX`: Optional - Command prefix to run ALSA commands (e.g., `ssh lemox.lan` for remote server or `sudo` for local with privileges)
 
 **Run All E2E Tests:**
 ```bash
-node e2e.test.js
+E2E_BASE_URL=http://localhost:8888 node e2e.test.js
 ```
 
 **Run Specific E2E Test File:**
 ```bash
-node e2e-alsa-to-ui.test.js   # Tests ALSA→UI sync via SSE
-node e2e-mute.test.js          # Tests mute toggle functionality
+# Basic UI tests
+E2E_BASE_URL=http://localhost:8888 node e2e.test.js
+
+# ALSA→UI synchronization tests
+E2E_BASE_URL=http://lemox.lan:8888 E2E_SERVER_CMD_PREFIX="ssh lemox.lan" node e2e-alsa-to-ui.test.js
+
+# Mute toggle tests
+E2E_BASE_URL=http://lemox.lan:8888 E2E_SERVER_CMD_PREFIX="ssh lemox.lan" node e2e-mute.test.js
 ```
 
 **Test Files:**
