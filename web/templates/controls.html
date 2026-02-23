@@ -85,10 +85,6 @@
       data-card-id="{{.CardID}}"
       data-control-name="{{.Name}}"
       data-volume-step="{{.VolumeStep}}"
-      hx-post="/control/volume"
-      hx-trigger="click, keyup[key=='ArrowLeft' || key=='ArrowRight']"
-      hx-swap="none"
-      hx-vals='{"card": "{{.CardID}}", "control": "{{.Name}}", "volume": "{{.VolumeNow}}"}'
       style="--volume-percent: {{.VolumeNow}}%;">
       <div class="mixer-control__volume-track">
         <div class="mixer-control__volume-fill" aria-hidden="true"></div>
