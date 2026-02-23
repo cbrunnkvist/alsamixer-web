@@ -262,42 +262,6 @@ func (m *Mixer) setVolumeLibrary(card uint, control string, values []int) error 
 
 	return nil
 }
-	defer mixer.Close()
-
-	ctl, err := mixer.CtlByName(control)
-	if err != nil {
-		return err
-	}
-
-	min, _ := ctl.RangeMin()
-	max, _ := ctl.RangeMax()
-	if max == min {
-		return fmt.Errorf("control '%s' has invalid range (min equals max)", control)
-	}
-
-	numChannels := int(ctl.NumValues())
-
-	log.Printf("SetVolume (library): control='%s' numChannels=%d", control, numChannels)
-
-	// Set each channel individually
-	if len(values) == 1 {
-		raw := min + (values[0]*(max-min))/100
-		for i := 0; i < numChannels; i++ {
-			if err := ctl.SetValue(uint(i), raw); err != nil {
-				log.Printf("SetVolume: warning: failed to set channel %d: %v", i, err)
-			}
-		}
-	} else {
-		for i := 0; i < numChannels && i < len(values); i++ {
-			raw := min + (values[i]*(max-min))/100
-			if err := ctl.SetValue(uint(i), raw); err != nil {
-				log.Printf("SetVolume: warning: failed to set channel %d: %v", i, err)
-			}
-		}
-	}
-
-	return nil
-}
 
 // GetMute retrieves the mute state for a control.
 // Returns true if ALL channels are muted, false otherwise.

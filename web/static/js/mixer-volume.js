@@ -32,15 +32,36 @@
     }
   }
 
-  function initSlider(slider) {
-    var current = parseIntAttr(slider, 'aria-valuenow', 0)
-    syncSliderUI(slider, current)
+  // Quantize a value to the nearest valid step
+  function quantizeToStep(value, min, max, step) {
+    if (step <= 0 || step >= 100) return value
+    // Round to nearest step
+    var quantized = Math.round(value / step) * step
+    return clamp(Math.round(quantized), min, max)
   }
 
-  function initSlidersIn(root) {
+  function initSlider(slider) {
+    var current = parseIntAttr(slider, 'aria-valuenow', 0)
+    var step = parseFloatAttr(slider, 'data-volume-step', 1)
+    var min = parseIntAttr(slider, 'aria-valuemin', 0)
+    var max = parseIntAttr(slider, 'aria-valuemax', 100)
+    // Quantize on init too
+    var quantized = quantizeToStep(current, min, max, step)
+    syncSliderUI(slider, quantized)
+  }
+
+  function initSlidersIn(root, skipActive) {
     var scope = root || document
     var sliders = scope.querySelectorAll('.mixer-control__volume[role="slider"]')
     for (var i = 0; i < sliders.length; i++) {
+      var slider = sliders[i]
+      // Skip the slider that's currently being dragged or recently modified
+      if (skipActive) {
+        var sliderId = getControlId(slider)
+        if (slider === activeSlider || sliderId === recentlyModifiedControl) {
+          continue
+        }
+      }
       initSlider(sliders[i])
     }
   }
@@ -70,15 +91,21 @@
     var step = parseFloatAttr(slider, 'data-volume-step', 1)
     if (step <= 0) step = 1
     
-    // Calculate raw value and round to nearest step
+    // Calculate raw value and quantize to nearest valid step
     var raw = min + ratio * (max - min)
-    var volume = Math.round(raw / step) * step
-    volume = clamp(Math.round(volume), min, max)
+    var volume = quantizeToStep(raw, min, max, step)
 
     syncSliderUI(slider, volume)
   }
 
   var activeSlider = null
+  var recentlyModifiedControl = null // Track by control identity (cardId + controlName)
+  var MODIFIED_COOLDOWN_MS = 1000
+  
+  // Helper to get control identity for a slider
+  function getControlId(slider) {
+    return slider.dataset.cardId + '|' + slider.dataset.controlName
+  }
   
   // Throttling for server updates during drag
   var lastSendTime = 0
@@ -108,6 +135,9 @@
     if (!slider) return
 
     activeSlider = slider
+    // Mark this slider as actively being dragged
+    slider.classList.add('volume-slider--dragging')
+    
     if (typeof slider.setPointerCapture === 'function') {
       try {
         slider.setPointerCapture(event.pointerId)
@@ -128,6 +158,9 @@
     if (!activeSlider) return
 
     updateFromPointer(activeSlider, event)
+    
+    // Remove dragging marker
+    activeSlider.classList.remove('volume-slider--dragging')
 
     if (typeof activeSlider.releasePointerCapture === 'function') {
       try {
@@ -145,8 +178,18 @@
         swap: 'none'
       })
     }
-
+    
+    // Mark this control as recently modified to prevent SSE from overriding it
+    recentlyModifiedControl = getControlId(activeSlider)
+    var prevControlId = recentlyModifiedControl
     activeSlider = null
+    
+    // Clear the cooldown after a short delay
+    setTimeout(function() {
+      if (recentlyModifiedControl === prevControlId) {
+        recentlyModifiedControl = null
+      }
+    }, MODIFIED_COOLDOWN_MS)
   }
 
   function handleKeyDown(event) {
@@ -192,7 +235,7 @@
   }
 
   document.addEventListener('DOMContentLoaded', function () {
-    initSlidersIn(document)
+    initSlidersIn(document, false)
 
     document.addEventListener('pointerdown', handlePointerDown)
     document.addEventListener('pointermove', handlePointerMove)
@@ -202,8 +245,9 @@
   })
 
   document.body && document.body.addEventListener('htmx:afterSwap', function (event) {
+    // After SSE swap, reinit sliders but skip the one being dragged or recently modified
     if (event && event.target) {
-      initSlidersIn(event.target)
+      initSlidersIn(event.target, true)
     }
   })
 })()

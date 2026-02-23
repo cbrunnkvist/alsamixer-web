@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html/template"
 	"log"
+	"math"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -208,15 +209,16 @@ func (s *Server) loadCardsForFilter(selectedCardID int) []cardView {
 			}
 
 			cv.Controls = append(cv.Controls, controlView{
-				ID:               controlID(card.ID, ctrl.Name),
-				CardID:           card.ID,
-				Name:             ctrl.Name,
-				HasVolume:        true,
-				HasMute:          hasMute,
-				HasCapture:       hasCapture,
-				VolumeMin:        0,
-				VolumeMax:        100,
-				VolumeStep:       int(ctrl.Step),
+				ID:         controlID(card.ID, ctrl.Name),
+				CardID:     card.ID,
+				Name:       ctrl.Name,
+				HasVolume:  true,
+				HasMute:    hasMute,
+				HasCapture: hasCapture,
+				VolumeMin:  0,
+				VolumeMax:  100,
+				// Calculate step as ceiling to ensure max reaches 100%
+				VolumeStep:       int(math.Ceil(100.0 / float64(ctrl.Max-ctrl.Min+1))),
 				VolumeNow:        volumeNow,
 				VolumeText:       fmt.Sprintf("%d%%", volumeNow),
 				VolumeAriaLabel:  fmt.Sprintf("%s volume", ctrl.Name),
@@ -282,14 +284,17 @@ func (s *Server) getControlView(cardID uint, controlName string) *controlView {
 		}
 
 		return &controlView{
-			ID:               controlID(cardID, ctrl.Name),
-			CardID:           cardID,
-			Name:             ctrl.Name,
-			HasVolume:        ctrl.Type == "integer",
-			HasMute:          hasMute,
-			HasCapture:       hasCapture,
-			VolumeMin:        0,
-			VolumeMax:        100,
+			ID:         controlID(cardID, ctrl.Name),
+			CardID:     cardID,
+			Name:       ctrl.Name,
+			HasVolume:  ctrl.Type == "integer",
+			HasMute:    hasMute,
+			HasCapture: hasCapture,
+			VolumeMin:  0,
+			VolumeMax:  100,
+			// Calculate step as percentage step size: 100 / number_of_steps
+			// For range min-max, there are (max-min+1) possible values
+			VolumeStep:       int(math.Ceil(100.0 / float64(ctrl.Max-ctrl.Min+1))),
 			VolumeNow:        volumeNow,
 			VolumeText:       fmt.Sprintf("%d%%", volumeNow),
 			VolumeAriaLabel:  fmt.Sprintf("%s volume", ctrl.Name),
