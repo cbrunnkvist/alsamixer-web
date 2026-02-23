@@ -203,3 +203,19 @@ No specific `.cursor/rules/` or `.github/copilot-instructions.md` files were fou
 - Any Playwright session must explicitly use Brave instead of attempting to download or install Chrome/Chromium.
 
 Failure to follow this rule will cause unnecessary timeouts and environment instability.
+
+## 4. ALSA Reference
+
+When working with ALSA mixer functionality, refer to `ALSA-NOTES.md` for:
+
+- Core ALSA terminology (Cards, Controls, PCM devices, Channels)
+- Control naming patterns and volume/switch derivation
+- Channel configurations (Mono, Stereo Joined, Stereo Independent)
+- Code patterns for GetMute/SetMute
+- Common ALSA plugins (softvol, dmix, route, dsnoop)
+- Debugging commands and lemox-specific setup
+
+Key points:
+- Switch values: ALSA 0 = muted, 1 = unmuted
+- Derive switch name from volume: `strings.Replace(name, " Volume", " Switch", 1)`
+- Always check channel configuration before assuming stereo/mono behavior

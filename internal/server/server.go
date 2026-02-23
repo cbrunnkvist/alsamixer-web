@@ -196,9 +196,6 @@ func (s *Server) loadCardsForFilter(selectedCardID int) []cardView {
 			muteControlName := strings.Replace(ctrl.Name, " Volume", " Switch", 1)
 			muted, muteErr := s.mixer.GetMute(card.ID, muteControlName)
 			hasMute := muteErr == nil
-			if muteErr != nil {
-				log.Printf("DEBUG: GetMute for %s failed: %v", muteControlName, muteErr)
-			}
 
 			// Check if there's a corresponding capture switch (for capture controls)
 			var hasCapture bool
@@ -267,8 +264,8 @@ func (s *Server) getControlView(cardID uint, controlName string) *controlView {
 			volumeNow = volumes[0]
 		}
 
-		// Check if there's a corresponding mute switch (ends with " Switch")
-		muteControlName := fmt.Sprintf("%s Switch", controlName)
+		// Check if there's a corresponding mute switch (replace " Volume" with " Switch")
+		muteControlName := strings.Replace(controlName, " Volume", " Switch", 1)
 		muted, muteErr := s.mixer.GetMute(cardID, muteControlName)
 		hasMute := muteErr == nil
 
@@ -278,7 +275,7 @@ func (s *Server) getControlView(cardID uint, controlName string) *controlView {
 		var hasCapture bool
 		var captureActive bool
 		if view == "capture" {
-			captureControlName := fmt.Sprintf("%s Switch", controlName)
+			captureControlName := strings.Replace(controlName, " Volume", " Switch", 1)
 			capMuted, capErr := s.mixer.GetMute(cardID, captureControlName)
 			hasCapture = capErr == nil
 			captureActive = !capMuted // Capture active means not muted

@@ -217,7 +217,7 @@ func (m *Mixer) GetMute(card uint, control string) (bool, error) {
 		return false, err
 	}
 
-	return val != 0, nil
+	return val == 0, nil
 }
 
 // SetMute sets the mute state for a control
@@ -244,9 +244,9 @@ func (m *Mixer) SetMute(card uint, control string, muted bool) error {
 		return fmt.Errorf("control '%s' is not boolean (type: %v)", control, ctl.Type())
 	}
 
-	val := 0
+	val := 1
 	if muted {
-		val = 1
+		val = 0
 	}
 	return ctl.SetValue(0, val)
 }

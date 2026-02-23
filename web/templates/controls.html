@@ -88,7 +88,7 @@
       hx-post="/control/volume"
       hx-trigger="click, keyup[key=='ArrowLeft' || key=='ArrowRight']"
       hx-swap="none"
-      hx-vals='js:{ card: this.dataset.cardId, control: this.dataset.controlName, volume: this.getAttribute("aria-valuenow") }'
+      hx-vals='{"card": "{{.CardID}}", "control": "{{.Name}}", "volume": "{{.VolumeNow}}"}'
       style="--volume-percent: {{.VolumeNow}}%;">
       <div class="mixer-control__volume-track">
         <div class="mixer-control__volume-fill" aria-hidden="true"></div>
@@ -116,7 +116,7 @@
       hx-post="/control/mute"
       hx-trigger="click, keyup[key=='Enter' || key==' ' || key=='Space']"
       hx-swap="none"
-      hx-vals='js:{ card: this.dataset.cardId, control: this.dataset.controlName, muted: this.getAttribute("aria-checked") === "true" }'>
+      hx-vals='{"card": "{{.CardID}}", "control": "{{.Name}}", "muted": "{{if .Muted}}true{{else}}false{{end}}"}'>
       <span class="sr-only" id="mute-help-{{.ID}}">
         {{if .Muted}}Mute enabled for {{.Name}}.{{else}}Mute disabled for {{.Name}}.{{end}}
       </span>
@@ -142,7 +142,7 @@
       hx-post="/control/capture"
       hx-trigger="click, keyup[key=='Enter' || key==' ' || key=='Space']"
       hx-swap="none"
-      hx-vals='js:{ card: this.dataset.cardId, control: this.dataset.controlName, active: this.getAttribute("aria-checked") === "true" }'>
+      hx-vals='{"card": "{{.CardID}}", "control": "{{.Name}}", "active": "{{if .CaptureActive}}true{{else}}false{{end}}"}'>
       <span class="sr-only" id="capture-help-{{.ID}}">
         {{if .CaptureActive}}Capture enabled for {{.Name}}.{{else}}Capture disabled for {{.Name}}.{{end}}
       </span>

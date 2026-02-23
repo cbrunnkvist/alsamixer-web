@@ -79,6 +79,7 @@
   }
 
   function handleToggleResponse(btn) {
+    if (!btn || !btn.classList || !btn.dataset) return
     if (!btn.classList.contains('mixer-control__toggle')) return
 
     var kind = btn.dataset.controlKind
@@ -153,7 +154,7 @@
   function setupHTMXToggleHandlers() {
     document.body.addEventListener('htmx:afterRequest', function (event) {
       var btn = event.target
-      if (btn && btn.classList.contains('mixer-control__toggle')) {
+      if (btn && btn.classList && btn.classList.contains('mixer-control__toggle')) {
         handleToggleResponse(btn)
       }
     })
