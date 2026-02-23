@@ -6,6 +6,8 @@ package alsa
 import (
 	"fmt"
 	"log"
+	"os/exec"
+	"strings"
 	"sync"
 
 	alsalib "github.com/gen2brain/alsa"
@@ -120,7 +122,8 @@ func (m *Mixer) ListControls(card uint) ([]Control, error) {
 	return controls, nil
 }
 
-// GetVolume retrieves the current volume levels for a control
+// GetVolume retrieves the current volume levels for a control.
+// Returns a slice of percentage values, one per channel.
 func (m *Mixer) GetVolume(card uint, control string) ([]int, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -145,16 +148,34 @@ func (m *Mixer) GetVolume(card uint, control string) ([]int, error) {
 	if max == min {
 		return nil, fmt.Errorf("control '%s' has invalid range (min equals max)", control)
 	}
-	val, err := ctl.Value(0)
-	if err != nil {
-		return nil, err
+
+	numChannels := int(ctl.NumValues())
+	values := make([]int, numChannels)
+
+	// Read all channel values using Array
+	rawValues := make([]int32, numChannels)
+	if err := ctl.Array(&rawValues); err != nil {
+		// Fall back to reading each channel individually
+		for i := 0; i < numChannels; i++ {
+			val, err := ctl.Value(uint(i))
+			if err != nil {
+				return nil, fmt.Errorf("failed to get channel %d value: %w", i, err)
+			}
+			values[i] = int((val - min) * 100 / (max - min))
+		}
+		return values, nil
 	}
 
-	percent := int((val - min) * 100 / (max - min))
-	return []int{percent}, nil
+	for i := 0; i < numChannels; i++ {
+		values[i] = int((int(rawValues[i]) - min) * 100 / (max - min))
+	}
+
+	return values, nil
 }
 
-// SetVolume sets the volume levels for a control
+// SetVolume sets the volume levels for a control.
+// When a single value is provided, it is applied to ALL channels (matching alsamixer behavior).
+// When multiple values are provided, each value is applied to its corresponding channel.
 func (m *Mixer) SetVolume(card uint, control string, values []int) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -167,6 +188,42 @@ func (m *Mixer) SetVolume(card uint, control string, values []int) error {
 		return fmt.Errorf("no volume values provided")
 	}
 
+	// Convert control name from UI format (e.g., "Speaker Playback Volume") to
+	// ALSA format (e.g., "Speaker")
+	alsaControl := control
+	// Remove " Playback Volume" or " Volume" suffix if present
+	if strings.HasSuffix(alsaControl, " Playback Volume") {
+		alsaControl = strings.TrimSuffix(alsaControl, " Playback Volume")
+	} else if strings.HasSuffix(alsaControl, " Volume") {
+		alsaControl = strings.TrimSuffix(alsaControl, " Volume")
+	}
+
+	// Use amixer command-line tool which correctly sets all channels
+	cmd := exec.Command("amixer", "-c", fmt.Sprintf("%d", card), "sset", alsaControl)
+	if len(values) == 1 {
+		// Single value: set both/all channels to the same value
+		cmd.Args = append(cmd.Args, fmt.Sprintf("%d", values[0]))
+	} else {
+		// Multiple values: set each channel
+		var channelVals []string
+		for _, v := range values {
+			channelVals = append(channelVals, fmt.Sprintf("%d", v))
+		}
+		cmd.Args = append(cmd.Args, strings.Join(channelVals, ","))
+	}
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Printf("SetVolume: amixer failed for '%s': %v output: %s", alsaControl, err, string(output))
+		// Fall back to library method
+		return m.setVolumeLibrary(card, control, values)
+	}
+
+	return nil
+}
+
+// setVolumeLibrary is the fallback volume setter using the alsa library
+func (m *Mixer) setVolumeLibrary(card uint, control string, values []int) error {
 	mixer, err := alsalib.MixerOpen(card)
 	if err != nil {
 		return fmt.Errorf("failed to open mixer: %w", err)
@@ -183,12 +240,67 @@ func (m *Mixer) SetVolume(card uint, control string, values []int) error {
 	if max == min {
 		return fmt.Errorf("control '%s' has invalid range (min equals max)", control)
 	}
-	v := values[0]
-	raw := min + (v*(max-min))/100
-	return ctl.SetValue(0, raw)
+
+	numChannels := int(ctl.NumValues())
+
+	// Set each channel individually
+	if len(values) == 1 {
+		raw := min + (values[0]*(max-min))/100
+		for i := 0; i < numChannels; i++ {
+			if err := ctl.SetValue(uint(i), raw); err != nil {
+				return fmt.Errorf("failed to set channel %d: %w", i, err)
+			}
+		}
+	} else {
+		for i := 0; i < numChannels && i < len(values); i++ {
+			raw := min + (values[i]*(max-min))/100
+			if err := ctl.SetValue(uint(i), raw); err != nil {
+				return fmt.Errorf("failed to set channel %d: %w", i, err)
+			}
+		}
+	}
+
+	return nil
+}
+	defer mixer.Close()
+
+	ctl, err := mixer.CtlByName(control)
+	if err != nil {
+		return err
+	}
+
+	min, _ := ctl.RangeMin()
+	max, _ := ctl.RangeMax()
+	if max == min {
+		return fmt.Errorf("control '%s' has invalid range (min equals max)", control)
+	}
+
+	numChannels := int(ctl.NumValues())
+
+	log.Printf("SetVolume (library): control='%s' numChannels=%d", control, numChannels)
+
+	// Set each channel individually
+	if len(values) == 1 {
+		raw := min + (values[0]*(max-min))/100
+		for i := 0; i < numChannels; i++ {
+			if err := ctl.SetValue(uint(i), raw); err != nil {
+				log.Printf("SetVolume: warning: failed to set channel %d: %v", i, err)
+			}
+		}
+	} else {
+		for i := 0; i < numChannels && i < len(values); i++ {
+			raw := min + (values[i]*(max-min))/100
+			if err := ctl.SetValue(uint(i), raw); err != nil {
+				log.Printf("SetVolume: warning: failed to set channel %d: %v", i, err)
+			}
+		}
+	}
+
+	return nil
 }
 
-// GetMute retrieves the mute state for a control
+// GetMute retrieves the mute state for a control.
+// Returns true if ALL channels are muted, false otherwise.
 func (m *Mixer) GetMute(card uint, control string) (bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -212,15 +324,24 @@ func (m *Mixer) GetMute(card uint, control string) (bool, error) {
 		return false, fmt.Errorf("control '%s' is not boolean (type: %v)", control, ctl.Type())
 	}
 
-	val, err := ctl.Value(0)
-	if err != nil {
-		return false, err
+	numChannels := int(ctl.NumValues())
+
+	// Check if ALL channels are muted
+	for i := 0; i < numChannels; i++ {
+		val, err := ctl.Value(uint(i))
+		if err != nil {
+			return false, fmt.Errorf("failed to get channel %d value: %w", i, err)
+		}
+		if val != 0 {
+			// At least one channel is not muted
+			return false, nil
+		}
 	}
 
-	return val == 0, nil
+	return true, nil
 }
 
-// SetMute sets the mute state for a control
+// SetMute sets the mute state for a control on ALL channels.
 func (m *Mixer) SetMute(card uint, control string, muted bool) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -248,7 +369,15 @@ func (m *Mixer) SetMute(card uint, control string, muted bool) error {
 	if muted {
 		val = 0
 	}
-	return ctl.SetValue(0, val)
+
+	numChannels := int(ctl.NumValues())
+	for i := 0; i < numChannels; i++ {
+		if err := ctl.SetValue(uint(i), val); err != nil {
+			return fmt.Errorf("failed to set channel %d mute: %w", i, err)
+		}
+	}
+
+	return nil
 }
 
 // Close cleans up resources and marks the mixer as closed
