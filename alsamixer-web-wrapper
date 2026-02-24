@@ -1,43 +1,47 @@
 #!/bin/bash
-# Wrapper script that watches the binary and restarts when it changes
+# Wrapper that monitors binary for changes and exits when restart needed.
+# systemd handles the actual restart via Restart=on-failure.
+#
+# Exit codes:
+#   0 = clean shutdown (no restart)
+#   1 = server crashed (restart)
+#   2 = binary updated (restart)
+
+set -euo pipefail
 
 BINARY="/root/work/alsamixer-web/alsamixer-web"
-WATCH_FILE="/root/work/alsamixer-web/alsamixer-web"
+PORT="${PORT:-8888}"
 
-start_server() {
-    "$BINARY" --port 8888 &
-    echo "Started server with PID $!"
+log() { echo "$(date '+%Y-%m-%d %H:%M:%S') $*"; }
+
+# Get initial binary state
+last_inode=$(stat -c '%i' "$BINARY" 2>/dev/null) || {
+    log "ERROR: Cannot stat binary $BINARY"
+    exit 1
 }
 
-# Start initial server
-start_server
-
-# Get initial inode and PID
-last_inode=$(stat -c '%i' "$WATCH_FILE")
+# Start server in background
+log "Starting server on port $PORT..."
+"$BINARY" --port "$PORT" &
 server_pid=$!
 
+# Cleanup on exit
+trap 'kill $server_pid 2>/dev/null || true; wait $server_pid 2>/dev/null || true' EXIT
+
+# Monitor loop
 while true; do
-    current_inode=$(stat -c '%i' "$WATCH_FILE" 2>/dev/null)
+    # Check if binary changed (inode changes when file is replaced)
+    current_inode=$(stat -c '%i' "$BINARY" 2>/dev/null) || true
     
     if [ "$current_inode" != "$last_inode" ]; then
-        echo "$(date): Binary changed (inode $last_inode -> $current_inode), restarting..."
-        last_inode=$current_inode
-        
-        # Kill existing process if running
-        if kill -0 $server_pid 2>/dev/null; then
-            echo "Killing old server (PID $server_pid)..."
-            kill $server_pid 2>/dev/null
-            wait $server_pid 2>/dev/null
-        fi
-        
-        # Start new server
-        start_server
+        log "Binary updated (inode $last_inode -> $current_inode), exiting for restart..."
+        exit 2
     fi
     
-    # Check if server is still running
-    if ! kill -0 $server_pid 2>/dev/null; then
-        echo "$(date): Server died, restarting..."
-        start_server
+    # Check if server is still alive
+    if ! kill -0 "$server_pid" 2>/dev/null; then
+        log "Server process died, exiting for restart..."
+        exit 1
     fi
     
     sleep 1

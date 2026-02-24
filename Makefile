@@ -43,8 +43,8 @@ deploy: build-linux-amd64
 		echo "Usage: make deploy DEPLOY_TARGET=user@host DEPLOY_PATH=/path/to/dest"; \
 		exit 1; \
 	fi
-	scp dist/alsamixer-web-linux-amd64 $(DEPLOY_TARGET):$(DEPLOY_PATH)/alsamixer-web
-	ssh $(DEPLOY_TARGET) "chmod +x $(DEPLOY_PATH)/alsamixer-web"
+	scp dist/alsamixer-web-linux-amd64 $(DEPLOY_TARGET):$(DEPLOY_PATH)/alsamixer-web.new
+	ssh $(DEPLOY_TARGET) "mv $(DEPLOY_PATH)/alsamixer-web.new $(DEPLOY_PATH)/alsamixer-web && chmod +x $(DEPLOY_PATH)/alsamixer-web"
 
 clean:
 	rm -rf alsamixer-web dist/
