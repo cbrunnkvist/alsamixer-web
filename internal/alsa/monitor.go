@@ -17,13 +17,11 @@ func init() {
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 }
 
-// Hub interface for broadcasting events
 type Hub interface {
 	ClientCount() int
 	Broadcast(event sse.Event)
 }
 
-// Monitor watches for ALSA mixer state changes and broadcasts them via SSE
 type Monitor struct {
 	mixer       *Mixer
 	hub         Hub
@@ -36,23 +34,19 @@ type Monitor struct {
 	configPaths []string
 }
 
-// StateSnapshot represents a snapshot of ALSA mixer state for comparison
 type StateSnapshot struct {
 	Cards map[uint]CardState
 }
 
-// CardState represents the state of a single card's controls
 type CardState struct {
 	Controls map[string]ControlState
 }
 
-// ControlState represents the state of a single control
 type ControlState struct {
 	Volume []int
 	Mute   bool
 }
 
-// NewMonitor creates a new ALSA monitor instance
 func NewMonitor(mixer *Mixer, hub Hub, monitorFile string) *Monitor {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
@@ -72,7 +66,6 @@ func NewMonitor(mixer *Mixer, hub Hub, monitorFile string) *Monitor {
 		configPaths: paths,
 	}
 
-	// Add config files to watcher
 	for _, path := range monitor.configPaths {
 		if _, err := os.Stat(path); err == nil {
 			if err := monitor.watcher.Add(path); err != nil {
@@ -88,7 +81,6 @@ func NewMonitor(mixer *Mixer, hub Hub, monitorFile string) *Monitor {
 	return monitor
 }
 
-// Start begins monitoring ALSA state changes
 func (m *Monitor) Start() {
 	m.wg.Add(1)
 	go m.monitorLoop()
@@ -97,7 +89,6 @@ func (m *Monitor) Start() {
 	log.Println("ALSA monitor started")
 }
 
-// Stop halts the monitoring loop
 func (m *Monitor) Stop() {
 	close(m.stopCh)
 	m.watcher.Close()
@@ -105,41 +96,31 @@ func (m *Monitor) Stop() {
 	log.Println("ALSA monitor stopped")
 }
 
-// monitorLoop is the main polling loop that checks for ALSA state changes
 func (m *Monitor) monitorLoop() {
 	defer m.wg.Done()
 
 	log.Printf("ALSA monitor loop started")
 
-	// Create ticker for 100ms intervals
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
 
-	// Always poll ALSA to detect external changes, regardless of client count.
-	// This ensures changes made via amixer or other tools are detected.
-
-	tickCount := 0
 	for {
 		select {
 		case <-ticker.C:
-			tickCount++
-
-			// Get current state and compare with last state
 			currentState := m.getCurrentState()
 			if currentState == nil {
-				// Failed to get state, retry next tick
 				continue
 			}
 
 			m.mu.Lock()
 			lastState := m.lastState
-			changed := m.hasStateChanged(currentState, lastState)
+			changed, delta := m.computeDelta(currentState, lastState)
 			if changed {
 				clients := m.hub.ClientCount()
-				log.Printf("ALSA state changed, broadcasting to %d clients", clients)
+				log.Printf("ALSA state changed, broadcasting delta to %d clients", clients)
 				m.lastState = currentState
 				m.mu.Unlock()
-				m.broadcastStateChange(currentState)
+				m.broadcastDelta(delta)
 			} else {
 				m.mu.Unlock()
 			}
@@ -151,7 +132,6 @@ func (m *Monitor) monitorLoop() {
 	}
 }
 
-// configWatcherLoop watches ALSA config files for changes and broadcasts an SSE event
 func (m *Monitor) configWatcherLoop() {
 	defer m.wg.Done()
 
@@ -180,7 +160,6 @@ func (m *Monitor) configWatcherLoop() {
 	}
 }
 
-// getCurrentState captures the current ALSA mixer state
 func (m *Monitor) getCurrentState() *StateSnapshot {
 	cards, err := m.mixer.ListCards()
 	if err != nil {
@@ -204,14 +183,12 @@ func (m *Monitor) getCurrentState() *StateSnapshot {
 		}
 
 		for _, control := range controls {
-			// Skip controls that aren't volume-related
 			if control.Type != "integer" && control.Type != "boolean" {
 				continue
 			}
 
 			controlState := ControlState{}
 
-			// Get volume if it's an integer control
 			if control.Type == "integer" {
 				volume, err := m.mixer.GetVolume(card.ID, control.Name)
 				if err != nil {
@@ -221,12 +198,9 @@ func (m *Monitor) getCurrentState() *StateSnapshot {
 				controlState.Volume = volume
 			}
 
-			// Get mute state - derive switch control name from volume control name
-			// e.g., "Master Volume" -> "Master Switch"
 			switchControlName := strings.Replace(control.Name, " Volume", " Switch", 1)
 			mute, err := m.mixer.GetMute(card.ID, switchControlName)
 			if err != nil {
-				// Not all controls have mute, that's okay
 				mute = false
 			}
 			controlState.Mute = mute
@@ -240,60 +214,73 @@ func (m *Monitor) getCurrentState() *StateSnapshot {
 	return snapshot
 }
 
-// hasStateChanged compares the current state with the last state
-func (m *Monitor) hasStateChanged(current, last *StateSnapshot) bool {
+// computeDelta compares current and last state, returning only what changed
+func (m *Monitor) computeDelta(current, last *StateSnapshot) (bool, *StateSnapshot) {
 	if last == nil {
-		return true // First time capturing state
+		return true, current
 	}
 
-	// Compare card counts
-	if len(current.Cards) != len(last.Cards) {
-		return true
+	delta := &StateSnapshot{
+		Cards: make(map[uint]CardState),
 	}
+	hasChanges := false
 
-	// Compare each card's controls
 	for cardID, currentCard := range current.Cards {
 		lastCard, exists := last.Cards[cardID]
 		if !exists {
-			return true
+			delta.Cards[cardID] = currentCard
+			hasChanges = true
+			continue
 		}
 
-		// Compare control counts
-		if len(currentCard.Controls) != len(lastCard.Controls) {
-			return true
+		cardDelta := CardState{
+			Controls: make(map[string]ControlState),
 		}
+		cardHasChanges := false
 
-		// Compare each control's state
 		for controlName, currentControl := range currentCard.Controls {
 			lastControl, exists := lastCard.Controls[controlName]
 			if !exists {
-				return true
+				cardDelta.Controls[controlName] = currentControl
+				cardHasChanges = true
+				continue
 			}
 
-			// Compare volume arrays
-			if len(currentControl.Volume) != len(lastControl.Volume) {
-				return true
-			}
-			for i, v := range currentControl.Volume {
-				if i >= len(lastControl.Volume) || v != lastControl.Volume[i] {
-					return true
+			volumeChanged := len(currentControl.Volume) != len(lastControl.Volume)
+			if !volumeChanged {
+				for i, v := range currentControl.Volume {
+					if i >= len(lastControl.Volume) || v != lastControl.Volume[i] {
+						volumeChanged = true
+						break
+					}
 				}
 			}
 
-			// Compare mute state
-			if currentControl.Mute != lastControl.Mute {
-				return true
+			muteChanged := currentControl.Mute != lastControl.Mute
+
+			if volumeChanged || muteChanged {
+				cardDelta.Controls[controlName] = currentControl
+				cardHasChanges = true
 			}
+		}
+
+		if cardHasChanges {
+			delta.Cards[cardID] = cardDelta
+			hasChanges = true
 		}
 	}
 
-	return false
+	if !hasChanges {
+		return false, nil
+	}
+
+	return true, delta
 }
 
-// broadcastStateChange sends the state change event to all connected clients
-func (m *Monitor) broadcastStateChange(snapshot *StateSnapshot) {
+func (m *Monitor) broadcastDelta(delta *StateSnapshot) {
 	m.hub.Broadcast(sse.Event{Type: "mixer-update", Data: map[string]interface{}{
-		"state":     snapshot,
+		"state":     delta,
+		"source":    "monitor",
 		"timestamp": time.Now().Unix(),
 	}})
 }
