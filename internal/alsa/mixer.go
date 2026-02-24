@@ -199,15 +199,21 @@ func (m *Mixer) SetVolume(card uint, control string, values []int) error {
 	}
 
 	// Use amixer command-line tool which correctly sets all channels
+	// IMPORTANT: Always use % suffix for percentage-based values
+	// amixer interprets values differently:
+	//   - value < 100 without %: treated as raw value
+	//   - value with % suffix: treated as percentage
+	//   - 100 without %: treated as 100% (special case)
+	// Since UI works in percentages, always add % suffix for consistency
 	cmd := exec.Command("amixer", "-c", fmt.Sprintf("%d", card), "sset", alsaControl)
 	if len(values) == 1 {
-		// Single value: set both/all channels to the same value
-		cmd.Args = append(cmd.Args, fmt.Sprintf("%d", values[0]))
+		// Single value: set both/all channels to the same percentage
+		cmd.Args = append(cmd.Args, fmt.Sprintf("%d%%", values[0]))
 	} else {
-		// Multiple values: set each channel
+		// Multiple values: set each channel as percentage
 		var channelVals []string
 		for _, v := range values {
-			channelVals = append(channelVals, fmt.Sprintf("%d", v))
+			channelVals = append(channelVals, fmt.Sprintf("%d%%", v))
 		}
 		cmd.Args = append(cmd.Args, strings.Join(channelVals, ","))
 	}
