@@ -6,15 +6,7 @@
   <section class="mixer-shell" aria-labelledby="mixer-heading">
     <h2 id="mixer-heading" class="sr-only">Mixer controls</h2>
 
-    <div
-      class="mixer-stream"
-      hx-ext="sse"
-      sse-connect="/events"
-      sse-swap="control-update"
-      hx-target="#sse-sink"
-      hx-swap="innerHTML"
-    >
-      <div id="sse-sink" class="sr-only" aria-live="off"></div>
+    <div class="mixer-stream">
       {{if .Cards}}
         {{template "controls" .}}
       {{else}}

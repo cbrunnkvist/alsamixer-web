@@ -1,4 +1,43 @@
 ;(function () {
+  // Initialize window.app for debug toggle
+  window.app = window.app || {}
+  window.app.debugLogging = window.app.debugLogging || false
+
+  // Debug logging - toggle with window.app.debugLogging = true
+  var debug = {
+    log: function() {
+      if (window.app && window.app.debugLogging) {
+        console.debug.apply(console, arguments)
+      }
+    },
+    warn: function() {
+      if (window.app && window.app.debugLogging) {
+        console.warn.apply(console, arguments)
+      }
+    },
+    table: function() {
+      if (window.app && window.app.debugLogging) {
+        console.table.apply(console, arguments)
+      }
+    },
+    dumpState: function(reason) {
+      if (!(window.app && window.app.debugLogging)) return
+      var state = []
+      var sliders = document.querySelectorAll('.mixer-control__volume[role="slider"]')
+      for (var i = 0; i < sliders.length; i++) {
+        var s = sliders[i]
+        state.push({
+          control: s.dataset.controlName,
+          value: s.getAttribute('aria-valuenow'),
+          step: s.getAttribute('data-volume-step'),
+          muted: s.closest('.mixer-control').querySelector('[role="switch"][data-control-kind="mute"]') ? 
+            s.closest('.mixer-control').querySelector('[role="switch"][data-control-kind="mute"]').getAttribute('aria-checked') : 'N/A'
+        })
+      }
+      console.table(state)
+    }
+  }
+
   function clamp(value, min, max) {
     return value < min ? min : value > max ? max : value
   }
@@ -15,7 +54,7 @@
     return isNaN(n) ? fallback : n
   }
 
-  function syncSliderUI(slider, volume) {
+  function syncSliderUI(slider, volume, reason) {
     var min = parseIntAttr(slider, 'aria-valuemin', 0)
     var max = parseIntAttr(slider, 'aria-valuemax', 100)
     var clamped = clamp(volume, min, max)
@@ -30,6 +69,9 @@
     if (valueEl) {
       valueEl.textContent = String(clamped)
     }
+    
+    debug.warn('Change ' + slider.dataset.controlName + ' model to ' + clamped + ' due to ' + reason)
+    debug.dumpState('after ' + reason)
   }
 
   // Quantize a value to the nearest valid step
@@ -47,7 +89,7 @@
     var max = parseIntAttr(slider, 'aria-valuemax', 100)
     // Quantize on init too
     var quantized = quantizeToStep(current, min, max, step)
-    syncSliderUI(slider, quantized)
+    syncSliderUI(slider, quantized, 'init')
   }
 
   function initSlidersIn(root, skipActive) {
@@ -58,7 +100,8 @@
       // Skip the slider that's currently being dragged or recently modified
       if (skipActive) {
         var sliderId = getControlId(slider)
-        if (slider === activeSlider || sliderId === recentlyModifiedControl) {
+        var recentMod = (window.app && window.app.getRecentlyModified) ? window.app.getRecentlyModified() : null
+        if (slider === activeSlider || sliderId === recentMod) {
           continue
         }
       }
@@ -95,12 +138,10 @@
     var raw = min + ratio * (max - min)
     var volume = quantizeToStep(raw, min, max, step)
 
-    syncSliderUI(slider, volume)
+    syncSliderUI(slider, volume, 'drag')
   }
 
   var activeSlider = null
-  var recentlyModifiedControl = null // Track by control identity (cardId + controlName)
-  var MODIFIED_COOLDOWN_MS = 1000
   
   // Helper to get control identity for a slider
   function getControlId(slider) {
@@ -123,6 +164,7 @@
       var card = activeSlider.dataset.cardId
       var control = activeSlider.dataset.controlName
       var volume = activeSlider.getAttribute('aria-valuenow')
+      debug.log('[POST /control/volume] sending:', card, control, volume)
       htmx.ajax('POST', '/control/volume', {
         values: { card: card, control: control, volume: volume },
         swap: 'none'
@@ -173,6 +215,7 @@
       var card = activeSlider.dataset.cardId
       var control = activeSlider.dataset.controlName
       var volume = activeSlider.getAttribute('aria-valuenow')
+      debug.log('[POST /control/volume] final:', card, control, volume)
       htmx.ajax('POST', '/control/volume', {
         values: { card: card, control: control, volume: volume },
         swap: 'none'
@@ -180,16 +223,10 @@
     }
     
     // Mark this control as recently modified to prevent SSE from overriding it
-    recentlyModifiedControl = getControlId(activeSlider)
-    var prevControlId = recentlyModifiedControl
+    if (window.app && window.app.setRecentlyModified) {
+      window.app.setRecentlyModified(activeSlider.dataset.cardId, activeSlider.dataset.controlName)
+    }
     activeSlider = null
-    
-    // Clear the cooldown after a short delay
-    setTimeout(function() {
-      if (recentlyModifiedControl === prevControlId) {
-        recentlyModifiedControl = null
-      }
-    }, MODIFIED_COOLDOWN_MS)
   }
 
   function handleKeyDown(event) {
@@ -220,13 +257,19 @@
     }
     var next = clamp(current + delta, min, max)
 
-    syncSliderUI(slider, next)
+    syncSliderUI(slider, next, 'keyboard')
+
+    // Mark this control as recently modified to prevent SSE from overriding it
+    if (window.app && window.app.setRecentlyModified) {
+      window.app.setRecentlyModified(slider.dataset.cardId, slider.dataset.controlName)
+    }
 
     // Trigger HTMX request to update volume on server
     if (typeof htmx !== 'undefined') {
       var card = slider.dataset.cardId
       var control = slider.dataset.controlName
       var volume = slider.getAttribute('aria-valuenow')
+      debug.log('[POST /control/volume] keyboard:', card, control, volume)
       htmx.ajax('POST', '/control/volume', {
         values: { card: card, control: control, volume: volume },
         swap: 'none'
@@ -242,12 +285,5 @@
     document.addEventListener('pointerup', clearPointerCapture)
     document.addEventListener('pointercancel', clearPointerCapture)
     document.addEventListener('keydown', handleKeyDown)
-  })
-
-  document.body && document.body.addEventListener('htmx:afterSwap', function (event) {
-    // After SSE swap, reinit sliders but skip the one being dragged or recently modified
-    if (event && event.target) {
-      initSlidersIn(event.target, true)
-    }
   })
 })()

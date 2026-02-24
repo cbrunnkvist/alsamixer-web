@@ -67,6 +67,11 @@ func (h *Hub) Run() {
 
 		case event := <-h.broadcast:
 			h.mu.Lock()
+			clientCount := len(h.clients)
+			h.mu.Unlock()
+			// Log the broadcast before sending to clients
+			log.Printf("[SSE] broadcasting to %d clients: type=%s", clientCount, event.Type)
+			h.mu.Lock()
 			for client := range h.clients {
 				if err := client.WriteEvent(event); err != nil {
 					// Client disconnected or channel full, remove it

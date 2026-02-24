@@ -186,6 +186,7 @@ E2E_BASE_URL=http://lemox.lan:8888 E2E_SERVER_CMD_PREFIX="ssh lemox.lan" node e2
 *   **DOM Manipulation**: Direct DOM API usage (`querySelector`, `querySelectorAll`, `addEventListener`, `setAttribute`, `closest`).
 *   **HTMX Interaction**: Listen for HTMX events (e.g., `htmx:afterSwap`) to re-initialize JavaScript logic on dynamically loaded content.
 *   **Accessibility**: Directly update ARIA attributes in response to user interaction.
+*   **Debug Logging**: Client-side debug logging is available via `window.app.debugLogging`. Set to `true` in the browser console to enable debug output (e.g., for E2E testing via Playwright: `page.evaluate(() => { window.app.debugLogging = true })`).
 *   **Clarity**: Comment complex logic blocks and functions.
 
 ## 3. Tool-Specific Rules

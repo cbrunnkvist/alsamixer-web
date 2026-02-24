@@ -1,4 +1,57 @@
 ;(function () {
+  // Initialize window.app for debug toggle (preserve existing value if set)
+  window.app = window.app || {}
+  if (window.app.debugLogging === undefined) {
+    window.app.debugLogging = false
+  }
+
+  // Debug logging - toggle with window.app.debugLogging = true
+  var debug = {
+    log: function() {
+      if (!(window.app && window.app.debugLogging)) return
+      var args = Array.prototype.slice.call(arguments)
+      // Build copyable string version first (for easy copy)
+      var copyable = args.map(function(a) {
+        if (a && typeof a === 'object' && !(a instanceof String)) {
+          try { return JSON.stringify(a) } catch(e) { return String(a) }
+        }
+        return String(a)
+      }).join(' ')
+      // Log: copyable string first (visible in log preview), then interactive objects
+      console.debug.apply(console, [copyable].concat(args))
+    }
+  }
+
+  // Track recently modified controls to prevent SSE from overwriting user's active interaction
+  var recentlyModifiedControl = null
+  var MODIFIED_COOLDOWN_MS = 1000
+
+  function getControlId(cardId, controlName) {
+    return cardId + '|' + controlName
+  }
+
+  function shouldSkipUpdate(controlName) {
+    if (!recentlyModifiedControl) return false
+    // Check if this control matches (handle "Master" vs "Master Volume" variations)
+    var normalized = function(n) { return n ? n.replace(' Volume', '').toLowerCase() : '' }
+    var incoming = normalized(controlName)
+    var modified = normalized(recentlyModifiedControl.split('|')[1])
+    return incoming === modified
+  }
+
+  // Expose for mixer-volume.js to call when user interacts
+  window.app.setRecentlyModified = function(cardId, controlName) {
+    recentlyModifiedControl = getControlId(cardId, controlName)
+    debug.log('[SSE] set recentlyModifiedControl:', recentlyModifiedControl)
+    setTimeout(function() {
+      recentlyModifiedControl = null
+    }, MODIFIED_COOLDOWN_MS)
+  }
+
+  window.app.getRecentlyModified = function() {
+    return recentlyModifiedControl
+  }
+
   function toArray(list) {
     return Array.prototype.slice.call(list || [])
   }
@@ -17,6 +70,11 @@
   }
 
   function updateVolume(cardId, controlName, volume) {
+    if (shouldSkipUpdate(controlName)) {
+      debug.log('[SSE] skipping volume update for recently modified:', controlName)
+      return
+    }
+
     var control = findControl(cardId, controlName)
     if (!control) return
 
@@ -35,6 +93,11 @@
   }
 
   function updateMute(cardId, controlName, muted) {
+    if (shouldSkipUpdate(controlName)) {
+      debug.log('[SSE] skipping mute update for recently modified:', controlName)
+      return
+    }
+
     var control = findControl(cardId, controlName)
     if (!control) return
 
@@ -57,6 +120,11 @@
   }
 
   function updateCapture(cardId, controlName, active) {
+    if (shouldSkipUpdate(controlName)) {
+      debug.log('[SSE] skipping capture update for recently modified:', controlName)
+      return
+    }
+
     var control = findControl(cardId, controlName)
     if (!control) return
 
@@ -86,6 +154,8 @@
     var cardId = btn.dataset.cardId
     var controlName = btn.dataset.controlName
 
+    debug.log('[HTMX toggle response]', kind, cardId, controlName)
+
     var current = btn.getAttribute('aria-checked') === 'true'
     var next = !current
     btn.setAttribute('aria-checked', next ? 'true' : 'false')
@@ -112,6 +182,13 @@
   function handleMixerUpdate(payload) {
     if (!payload || !payload.state || !payload.state.Cards) return
 
+    var isFromHandler = payload.source === 'handler'
+    var changedControl = payload.control
+
+    // If we have a recently modified control, skip ALL updates from non-handler sources
+    // This prevents stale monitor state from overwriting user's active changes
+    var skipAllExceptHandler = !isFromHandler && recentlyModifiedControl
+
     var cards = payload.state.Cards
     Object.keys(cards).forEach(function (cardId) {
       var cardState = cards[cardId]
@@ -120,6 +197,19 @@
       Object.keys(controls).forEach(function (controlName) {
         var state = controls[controlName]
         if (!state) return
+
+        // Skip if this is from handler and matches recently modified
+        if (isFromHandler && shouldSkipUpdate(controlName)) {
+          debug.log('[SSE mixer-update] skipping handler update for:', controlName)
+          return
+        }
+
+        // Skip ALL updates from monitor while user interaction is pending
+        if (skipAllExceptHandler) {
+          debug.log('[SSE mixer-update] skipping monitor update due to recent user interaction')
+          return
+        }
+
         if (Array.isArray(state.Volume) && state.Volume.length) {
           updateVolume(cardId, controlName, state.Volume[0])
         }
@@ -133,22 +223,66 @@
   function setupSSE() {
     var source = new EventSource('/events')
 
-    source.addEventListener('volume-change', function (event) {
-      var data = JSON.parse(event.data || '{}')
-      if (!data) return
-      updateVolume(data.card, data.control, data.volume)
+    // Connection status handling
+    var statusEl = document.getElementById('connection-status')
+    source.onopen = function() {
+      debug.log('[SSE] connected')
+      if (statusEl) {
+        statusEl.classList.remove('is-disconnected')
+        var valueEl = statusEl.querySelector('[data-connection-state]')
+        if (valueEl) valueEl.textContent = 'Connected'
+      }
+    }
+    source.onerror = function() {
+      debug.log('[SSE] disconnected')
+      if (statusEl) {
+        statusEl.classList.add('is-disconnected')
+        var valueEl = statusEl.querySelector('[data-connection-state]')
+        if (valueEl) valueEl.textContent = 'Disconnected'
+      }
+    }
+
+    // Handle control-update events (from HTMX POST responses - other clients' changes)
+    // These come with HTML payload for hx-swap-oob OR JSON for JS clients
+    source.addEventListener('control-update', function (event) {
+      var raw = event.data || ''
+      debug.log('[SSE control-update]', raw.substring(0, 100))
+      // If it starts with '<', it's HTML from hx-swap-oob - we ignore it since we're using JS-only
+      // If it's JSON, parse it and handle like mixer-update
+      if (raw.charAt(0) === '<') {
+        debug.log('[SSE control-update] HTML payload ignored (using JS-only)')
+        return
+      }
+      try {
+        var data = JSON.parse(raw)
+        handleMixerUpdate(data)
+      } catch (e) {
+        debug.log('[SSE control-update] failed to parse:', e)
+      }
     })
 
-    source.addEventListener('mute-change', function (event) {
-      var data = JSON.parse(event.data || '{}')
-      if (!data) return
-      updateMute(data.card, data.control, data.muted)
-    })
-
+    // Handle mixer-update events (from ALSA monitor - external changes)
     source.addEventListener('mixer-update', function (event) {
       var data = JSON.parse(event.data || '{}')
+      debug.log('[SSE mixer-update]', data)
       handleMixerUpdate(data)
     })
+
+    // Handle config-change events
+    source.addEventListener('config-change', function (event) {
+      var data = JSON.parse(event.data || '{}')
+      debug.log('[SSE config-change]', data)
+      // Could reload page or update UI for config changes
+    })
+
+    // Fallback: handle any unnamed messages
+    source.onmessage = function (event) {
+      debug.log('[SSE message]', event.data)
+      try {
+        var data = JSON.parse(event.data || '{}')
+        handleMixerUpdate(data)
+      } catch (e) {}
+    }
   }
 
   function setupHTMXToggleHandlers() {

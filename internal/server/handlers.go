@@ -12,6 +12,26 @@ import (
 	"github.com/user/alsamixer-web/internal/sse"
 )
 
+// compactEventData creates a compact JSON representation of an SSE broadcast for logging
+func compactEventData(ctrl *controlView) string {
+	if ctrl == nil {
+		return "{}"
+	}
+	// Create a minimal representation
+	type CompactControl struct {
+		C string `json:"c"` // control name
+		V int    `json:"v"` // volume now
+		M bool   `json:"m"` // muted
+	}
+	data := CompactControl{
+		C: ctrl.Name,
+		V: ctrl.VolumeNow,
+		M: ctrl.Muted,
+	}
+	b, _ := json.Marshal(data)
+	return string(b)
+}
+
 // mixer defines the subset of the ALSA mixer interface used by
 // the HTTP control handlers. It is defined here so tests can
 // swap in a fake implementation without requiring real ALSA
@@ -50,6 +70,9 @@ func (s *Server) MuteHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "missing card or control", http.StatusBadRequest)
 		return
 	}
+
+	// Log the request body
+	log.Printf("[POST /control/mute] card=%s control=%s", cardStr, control)
 
 	cardValue, err := strconv.ParseUint(cardStr, 10, 0)
 	if err != nil {
@@ -93,17 +116,24 @@ func (s *Server) MuteHandler(w http.ResponseWriter, r *http.Request) {
 	if s.hub != nil {
 		ctrl := s.getControlView(cardID, control)
 		if ctrl != nil {
-			html, err := s.renderControlHTML(*ctrl)
-			if err != nil {
-				log.Printf("failed to render control HTML: %v", err)
-			} else {
-				payload := fmt.Sprintf(`<article id="control-%d-%s" hx-swap-oob="outerHTML">%s</article>`, cardID, control, html)
-				go s.hub.Broadcast(sse.Event{
-					Type:   "control-update",
-					Data:   payload,
-					IsHTML: true,
-				})
-			}
+			// Log the SSE broadcast (compact JSON)
+			log.Printf("[SSE broadcast] %s", compactEventData(ctrl))
+			// Broadcast mixer-update style event for JS-only clients
+			go s.hub.Broadcast(sse.Event{
+				Type: "mixer-update",
+				Data: map[string]interface{}{
+					"state": map[string]interface{}{
+						fmt.Sprintf("%d", cardID): map[string]interface{}{
+							control: map[string]interface{}{
+								"Volume": []int{ctrl.VolumeNow},
+								"Mute":   newMuted,
+							},
+						},
+					},
+					"source":  "handler",
+					"control": control,
+				},
+			})
 		}
 	}
 
@@ -134,6 +164,9 @@ func (s *Server) VolumeHandler(w http.ResponseWriter, r *http.Request) {
 	cardStr := r.Form.Get("card")
 	control := r.Form.Get("control")
 	volumeStr := r.Form.Get("volume")
+
+	// Log the request body
+	log.Printf("[POST /control/volume] card=%s control=%s volume=%s", cardStr, control, volumeStr)
 
 	if cardStr == "" || control == "" || volumeStr == "" {
 		http.Error(w, "missing card, control, or volume", http.StatusBadRequest)
@@ -178,17 +211,25 @@ func (s *Server) VolumeHandler(w http.ResponseWriter, r *http.Request) {
 	if s.hub != nil {
 		ctrl := s.getControlView(cardID, control)
 		if ctrl != nil {
-			html, err := s.renderControlHTML(*ctrl)
-			if err != nil {
-				log.Printf("failed to render control HTML: %v", err)
-			} else {
-				payload := fmt.Sprintf(`<article id="control-%d-%s" hx-swap-oob="outerHTML">%s</article>`, cardID, control, html)
-				go s.hub.Broadcast(sse.Event{
-					Type:   "control-update",
-					Data:   payload,
-					IsHTML: true,
-				})
-			}
+			// Log the SSE broadcast (compact JSON)
+			log.Printf("[SSE broadcast] %s", compactEventData(ctrl))
+			// Broadcast mixer-update style event for JS-only clients
+			// Include timestamp so client knows this is fresh from handler (not monitor)
+			go s.hub.Broadcast(sse.Event{
+				Type: "mixer-update",
+				Data: map[string]interface{}{
+					"state": map[string]interface{}{
+						fmt.Sprintf("%d", cardID): map[string]interface{}{
+							control: map[string]interface{}{
+								"Volume": []int{volume},
+								"Mute":   ctrl.Muted,
+							},
+						},
+					},
+					"source":  "handler",
+					"control": control,
+				},
+			})
 		}
 	}
 
@@ -215,6 +256,9 @@ func (s *Server) CaptureHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "missing card or control", http.StatusBadRequest)
 		return
 	}
+
+	// Log the request body
+	log.Printf("[POST /control/capture] card=%s control=%s", cardStr, control)
 
 	cardValue, err := strconv.ParseUint(cardStr, 10, 0)
 	if err != nil {
@@ -260,17 +304,24 @@ func (s *Server) CaptureHandler(w http.ResponseWriter, r *http.Request) {
 	if s.hub != nil {
 		ctrl := s.getControlView(cardID, control)
 		if ctrl != nil {
-			html, err := s.renderControlHTML(*ctrl)
-			if err != nil {
-				log.Printf("failed to render control HTML: %v", err)
-			} else {
-				payload := fmt.Sprintf(`<article id="control-%d-%s" hx-swap-oob="outerHTML">%s</article>`, cardID, control, html)
-				go s.hub.Broadcast(sse.Event{
-					Type:   "control-update",
-					Data:   payload,
-					IsHTML: true,
-				})
-			}
+			// Log the SSE broadcast (compact JSON)
+			log.Printf("[SSE broadcast] %s", compactEventData(ctrl))
+			// Broadcast mixer-update style event for JS-only clients
+			go s.hub.Broadcast(sse.Event{
+				Type: "mixer-update",
+				Data: map[string]interface{}{
+					"state": map[string]interface{}{
+						fmt.Sprintf("%d", cardID): map[string]interface{}{
+							control: map[string]interface{}{
+								"Volume": []int{ctrl.VolumeNow},
+								"Mute":   newMuted, // Capture is inverse of mute
+							},
+						},
+					},
+					"source":  "handler",
+					"control": control,
+				},
+			})
 		}
 	}
 
