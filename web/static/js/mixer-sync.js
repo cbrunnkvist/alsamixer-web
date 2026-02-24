@@ -22,34 +22,37 @@
     }
   }
 
-  // Track recently modified controls to prevent SSE from overwriting user's active interaction
-  var recentlyModifiedControl = null
-  var MODIFIED_COOLDOWN_MS = 1000
+  // Track actively dragging controls - skip ALL SSE updates during drag
+  var activeDragControl = null
 
   function getControlId(cardId, controlName) {
     return cardId + '|' + controlName
   }
 
-  function shouldSkipUpdate(controlName) {
-    if (!recentlyModifiedControl) return false
-    // Check if this control matches (handle "Master" vs "Master Volume" variations)
+  // Called when user starts dragging a slider
+  window.app.setActiveDrag = function(cardId, controlName) {
+    activeDragControl = getControlId(cardId, controlName)
+    debug.log('[SSE] active drag started:', activeDragControl)
+  }
+
+  // Called when user stops dragging
+  window.app.clearActiveDrag = function() {
+    if (activeDragControl) {
+      debug.log('[SSE] active drag ended:', activeDragControl)
+      activeDragControl = null
+    }
+  }
+
+  window.app.isActiveDrag = function() {
+    return !!activeDragControl
+  }
+
+  function isControlInPayload(controlName) {
+    if (!activeDragControl) return false
     var normalized = function(n) { return n ? n.replace(' Volume', '').toLowerCase() : '' }
     var incoming = normalized(controlName)
-    var modified = normalized(recentlyModifiedControl.split('|')[1])
-    return incoming === modified
-  }
-
-  // Expose for mixer-volume.js to call when user interacts
-  window.app.setRecentlyModified = function(cardId, controlName) {
-    recentlyModifiedControl = getControlId(cardId, controlName)
-    debug.log('[SSE] set recentlyModifiedControl:', recentlyModifiedControl)
-    setTimeout(function() {
-      recentlyModifiedControl = null
-    }, MODIFIED_COOLDOWN_MS)
-  }
-
-  window.app.getRecentlyModified = function() {
-    return recentlyModifiedControl
+    var active = normalized(activeDragControl.split('|')[1])
+    return incoming === active
   }
 
   function toArray(list) {
@@ -70,8 +73,9 @@
   }
 
   function updateVolume(cardId, controlName, volume) {
-    if (shouldSkipUpdate(controlName)) {
-      debug.log('[SSE] skipping volume update for recently modified:', controlName)
+    // Skip ALL updates during active drag
+    if (activeDragControl && isControlInPayload(controlName)) {
+      debug.log('[SSE] skipping volume update during drag:', controlName, volume)
       return
     }
 
@@ -93,8 +97,9 @@
   }
 
   function updateMute(cardId, controlName, muted) {
-    if (shouldSkipUpdate(controlName)) {
-      debug.log('[SSE] skipping mute update for recently modified:', controlName)
+    // Skip ALL updates during active drag
+    if (activeDragControl && isControlInPayload(controlName)) {
+      debug.log('[SSE] skipping mute update during drag:', controlName, muted)
       return
     }
 
@@ -120,8 +125,9 @@
   }
 
   function updateCapture(cardId, controlName, active) {
-    if (shouldSkipUpdate(controlName)) {
-      debug.log('[SSE] skipping capture update for recently modified:', controlName)
+    // Skip ALL updates during active drag
+    if (activeDragControl && isControlInPayload(controlName)) {
+      debug.log('[SSE] skipping capture update during drag:', controlName, active)
       return
     }
 
@@ -180,44 +186,53 @@
   }
 
   function handleMixerUpdate(payload) {
-    if (!payload || !payload.state || !payload.state.Cards) return
+    if (!payload || !payload.state) return
 
-    var isFromHandler = payload.source === 'handler'
-    var changedControl = payload.control
+    // Check if this is a card-based update (monitor) or direct update (handler)
+    var isCardBased = payload.state.Cards && !payload.state['1']
+    
+    // Skip ALL updates during active drag - the UI is already up to date
+    if (activeDragControl) {
+      debug.log('[SSE mixer-update] skipping during active drag')
+      return
+    }
 
-    // If we have a recently modified control, skip ALL updates from non-handler sources
-    // This prevents stale monitor state from overwriting user's active changes
-    var skipAllExceptHandler = !isFromHandler && recentlyModifiedControl
-
-    var cards = payload.state.Cards
-    Object.keys(cards).forEach(function (cardId) {
-      var cardState = cards[cardId]
-      if (!cardState || !cardState.Controls) return
-      var controls = cardState.Controls
-      Object.keys(controls).forEach(function (controlName) {
-        var state = controls[controlName]
-        if (!state) return
-
-        // Skip if this is from handler and matches recently modified
-        if (isFromHandler && shouldSkipUpdate(controlName)) {
-          debug.log('[SSE mixer-update] skipping handler update for:', controlName)
-          return
-        }
-
-        // Skip ALL updates from monitor while user interaction is pending
-        if (skipAllExceptHandler) {
-          debug.log('[SSE mixer-update] skipping monitor update due to recent user interaction')
-          return
-        }
-
-        if (Array.isArray(state.Volume) && state.Volume.length) {
-          updateVolume(cardId, controlName, state.Volume[0])
-        }
-        if (typeof state.Mute === 'boolean') {
-          updateMute(cardId, controlName, state.Mute)
-        }
+    if (isCardBased) {
+      // Monitor format: state.Cards[cardId].Controls[controlName]
+      var cards = payload.state.Cards
+      Object.keys(cards).forEach(function (cardId) {
+        var cardState = cards[cardId]
+        if (!cardState || !cardState.Controls) return
+        var controls = cardState.Controls
+        Object.keys(controls).forEach(function (controlName) {
+          var state = controls[controlName]
+          if (!state) return
+          if (Array.isArray(state.Volume) && state.Volume.length) {
+            updateVolume(cardId, controlName, state.Volume[0])
+          }
+          if (typeof state.Mute === 'boolean') {
+            updateMute(cardId, controlName, state.Mute)
+          }
+        })
       })
-    })
+    } else {
+      // Handler format: state[cardId][controlName]
+      var cards = payload.state
+      Object.keys(cards).forEach(function (cardId) {
+        var cardState = cards[cardId]
+        if (!cardState) return
+        Object.keys(cardState).forEach(function (controlName) {
+          var state = cardState[controlName]
+          if (!state) return
+          if (Array.isArray(state.Volume) && state.Volume.length) {
+            updateVolume(cardId, controlName, state.Volume[0])
+          }
+          if (typeof state.Mute === 'boolean') {
+            updateMute(cardId, controlName, state.Mute)
+          }
+        })
+      })
+    }
   }
 
   function setupSSE() {

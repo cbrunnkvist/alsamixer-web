@@ -181,6 +181,11 @@
     // Mark this slider as actively being dragged
     slider.classList.add('volume-slider--dragging')
     
+    // Tell mixer-sync to skip SSE updates during drag
+    if (window.app && window.app.setActiveDrag) {
+      window.app.setActiveDrag(slider.dataset.cardId, slider.dataset.controlName)
+    }
+    
     if (typeof slider.setPointerCapture === 'function') {
       try {
         slider.setPointerCapture(event.pointerId)
@@ -224,9 +229,9 @@
       })
     }
     
-    // Mark this control as recently modified to prevent SSE from overriding it
-    if (window.app && window.app.setRecentlyModified) {
-      window.app.setRecentlyModified(activeSlider.dataset.cardId, activeSlider.dataset.controlName)
+    // Clear active drag - SSE updates can now resume
+    if (window.app && window.app.clearActiveDrag) {
+      window.app.clearActiveDrag()
     }
     activeSlider = null
   }
@@ -261,9 +266,9 @@
 
     syncSliderUI(slider, next, 'keyboard')
 
-    // Mark this control as recently modified to prevent SSE from overriding it
-    if (window.app && window.app.setRecentlyModified) {
-      window.app.setRecentlyModified(slider.dataset.cardId, slider.dataset.controlName)
+    // Start active drag mode to prevent SSE from overriding
+    if (window.app && window.app.setActiveDrag) {
+      window.app.setActiveDrag(slider.dataset.cardId, slider.dataset.controlName)
     }
 
     // Trigger HTMX request to update volume on server
@@ -277,6 +282,11 @@
         values: { value: volume },
         swap: 'none'
       })
+    }
+    
+    // Clear active drag after keyboard change
+    if (window.app && window.app.clearActiveDrag) {
+      window.app.clearActiveDrag()
     }
   }
 
