@@ -70,6 +70,7 @@ type controlView struct {
 	ID               string
 	CardID           uint
 	Name             string
+	BaseName         string
 	Description      string
 	HasVolume        bool
 	HasMute          bool
@@ -110,6 +111,21 @@ func controlViewType(controlName string) string {
 		return "capture"
 	}
 	return "playback"
+}
+
+var volumeSuffixes = []string{
+	" Playback Volume",
+	" Capture Volume",
+	" Volume",
+}
+
+func extractBaseName(controlName string) string {
+	for _, suffix := range volumeSuffixes {
+		if strings.HasSuffix(controlName, suffix) {
+			return strings.TrimSuffix(controlName, suffix)
+		}
+	}
+	return controlName
 }
 
 // shouldSkipControl returns true if the control should be hidden from the UI.
@@ -212,6 +228,7 @@ func (s *Server) loadCardsForFilter(selectedCardID int) []cardView {
 				ID:         controlID(card.ID, ctrl.Name),
 				CardID:     card.ID,
 				Name:       ctrl.Name,
+				BaseName:   extractBaseName(ctrl.Name),
 				HasVolume:  true,
 				HasMute:    hasMute,
 				HasCapture: hasCapture,
@@ -287,6 +304,7 @@ func (s *Server) getControlView(cardID uint, controlName string) *controlView {
 			ID:         controlID(cardID, ctrl.Name),
 			CardID:     cardID,
 			Name:       ctrl.Name,
+			BaseName:   extractBaseName(ctrl.Name),
 			HasVolume:  ctrl.Type == "integer",
 			HasMute:    hasMute,
 			HasCapture: hasCapture,
@@ -417,10 +435,15 @@ func (s *Server) setupRoutes() {
 	staticFS := http.FileServer(http.FS(web.StaticFS()))
 	s.mux.Handle("/static/", http.StripPrefix("/static/", staticFS))
 
-	// Control endpoints
+	// Control endpoints (legacy - keep for backwards compatibility)
 	s.mux.HandleFunc("POST /control/volume", s.VolumeHandler)
 	s.mux.HandleFunc("POST /control/mute", s.MuteHandler)
 	s.mux.HandleFunc("POST /control/capture", s.CaptureHandler)
+
+	// RESTful API endpoints
+	s.mux.HandleFunc("POST /card/{cardId}/control/{controlName}/volume", s.CardControlVolumeHandler)
+	s.mux.HandleFunc("POST /card/{cardId}/control/{controlName}/mute", s.CardControlMuteHandler)
+	s.mux.HandleFunc("POST /card/{cardId}/control/{controlName}/capture", s.CardControlCaptureHandler)
 
 	// Debug endpoint
 	s.mux.HandleFunc("GET /debug/controls", s.DebugControlsHandler)

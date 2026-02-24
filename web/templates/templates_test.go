@@ -16,6 +16,7 @@ const controlsTemplatePath = "controls.html"
 type ControlView struct {
 	ID          string
 	Name        string
+	BaseName    string
 	Description string
 	CardID      uint
 
@@ -80,7 +81,8 @@ func TestControlsTemplateExecutesWithMockData(t *testing.T) {
 				Controls: []ControlView{
 					{
 						ID:               "master",
-						Name:             "Master",
+						Name:             "Master Playback Volume",
+						BaseName:         "Master",
 						Description:      "Master playback volume",
 						CardID:           0,
 						HasVolume:        true,

@@ -46,7 +46,7 @@
 {{end}}
 
 {{define "control"}}
-<article class="mixer-control" id="control-{{.CardID}}-{{.ID}}" data-control-id="{{.ID}}" data-card-id="{{.CardID}}" data-control-name="{{.Name}}" data-control-view="{{.View}}">
+<article class="mixer-control" id="control-{{.CardID}}-{{.ID}}" data-control-id="{{.ID}}" data-card-id="{{.CardID}}" data-control-name="{{.Name}}" data-base-name="{{.BaseName}}" data-control-view="{{.View}}">
   <header class="mixer-control__header">
     <div class="mixer-control__title-row">
       <h3 class="mixer-control__label">{{.Name}}</h3>
@@ -84,6 +84,7 @@
       data-control-kind="volume"
       data-card-id="{{.CardID}}"
       data-control-name="{{.Name}}"
+      data-base-name="{{.BaseName}}"
       data-volume-step="{{.VolumeStep}}"
       style="--volume-percent: {{.VolumeNow}}%;">
       <div class="mixer-control__volume-track">
@@ -109,10 +110,10 @@
       data-control-type="toggle"
       data-card-id="{{.CardID}}"
       data-control-name="{{.Name}}"
-      hx-post="/control/mute"
+      data-base-name="{{.BaseName}}"
+      hx-post="/card/{{.CardID}}/control/{{.BaseName}}/mute"
       hx-trigger="click, keyup[key=='Enter' || key==' ' || key=='Space']"
-      hx-swap="none"
-      hx-vals='{"card": "{{.CardID}}", "control": "{{.Name}}", "muted": "{{if .Muted}}true{{else}}false{{end}}"}'>
+      hx-swap="none">
       <span class="sr-only" id="mute-help-{{.ID}}">
         {{if .Muted}}Mute enabled for {{.Name}}.{{else}}Mute disabled for {{.Name}}.{{end}}
       </span>
@@ -135,10 +136,10 @@
       data-control-type="toggle"
       data-card-id="{{.CardID}}"
       data-control-name="{{.Name}}"
-      hx-post="/control/capture"
+      data-base-name="{{.BaseName}}"
+      hx-post="/card/{{.CardID}}/control/{{.BaseName}}/capture"
       hx-trigger="click, keyup[key=='Enter' || key==' ' || key=='Space']"
-      hx-swap="none"
-      hx-vals='{"card": "{{.CardID}}", "control": "{{.Name}}", "active": "{{if .CaptureActive}}true{{else}}false{{end}}"}'>
+      hx-swap="none">
       <span class="sr-only" id="capture-help-{{.ID}}">
         {{if .CaptureActive}}Capture enabled for {{.Name}}.{{else}}Capture disabled for {{.Name}}.{{end}}
       </span>

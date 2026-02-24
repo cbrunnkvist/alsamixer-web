@@ -5,12 +5,267 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 
 	"github.com/user/alsamixer-web/internal/alsa"
 	"github.com/user/alsamixer-web/internal/sse"
 )
+
+func (s *Server) resolveVolumeControlName(cardID uint, baseName string) string {
+	controls, err := s.mixer.ListControls(cardID)
+	if err != nil {
+		return baseName + " Playback Volume"
+	}
+	for _, ctrl := range controls {
+		bn := extractBaseName(ctrl.Name)
+		if bn == baseName && strings.Contains(ctrl.Name, "Volume") {
+			return ctrl.Name
+		}
+	}
+	return baseName + " Playback Volume"
+}
+
+func (s *Server) resolveSwitchControlName(cardID uint, baseName string) string {
+	volName := s.resolveVolumeControlName(cardID, baseName)
+	return strings.Replace(volName, " Volume", " Switch", 1)
+}
+
+func (s *Server) CardControlVolumeHandler(w http.ResponseWriter, r *http.Request) {
+	cardIDStr := r.PathValue("cardId")
+	controlBaseName := r.PathValue("controlName")
+
+	unescapedName, err := url.PathUnescape(controlBaseName)
+	if err != nil {
+		http.Error(w, "invalid control name", http.StatusBadRequest)
+		return
+	}
+	controlBaseName = unescapedName
+
+	cardID, err := strconv.ParseUint(cardIDStr, 10, 0)
+	if err != nil {
+		http.Error(w, "invalid card id", http.StatusBadRequest)
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "invalid form data", http.StatusBadRequest)
+		return
+	}
+
+	volumeStr := r.Form.Get("value")
+	if volumeStr == "" {
+		volumeStr = r.Form.Get("volume")
+	}
+	if volumeStr == "" {
+		http.Error(w, "missing volume value", http.StatusBadRequest)
+		return
+	}
+
+	volume, err := strconv.Atoi(volumeStr)
+	if err != nil {
+		http.Error(w, "invalid volume", http.StatusBadRequest)
+		return
+	}
+
+	if volume < 0 {
+		volume = 0
+	} else if volume > 100 {
+		volume = 100
+	}
+
+	controlName := s.resolveVolumeControlName(uint(cardID), controlBaseName)
+
+	log.Printf("[POST /card/%d/control/%s/volume] volume=%d (resolved: %s)", cardID, controlBaseName, volume, controlName)
+
+	m := newMixer()
+	if m == nil {
+		http.Error(w, "mixer unavailable", http.StatusInternalServerError)
+		return
+	}
+	if closer, ok := m.(interface{ Close() error }); ok {
+		defer closer.Close()
+	}
+
+	if err := m.SetVolume(uint(cardID), controlName, []int{volume}); err != nil {
+		http.Error(w, fmt.Sprintf("failed to set volume: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	if s.hub != nil {
+		ctrl := s.getControlView(uint(cardID), controlName)
+		if ctrl != nil {
+			log.Printf("[SSE broadcast] %s", compactEventData(ctrl))
+			go s.hub.Broadcast(sse.Event{
+				Type: "mixer-update",
+				Data: map[string]interface{}{
+					"state": map[string]interface{}{
+						fmt.Sprintf("%d", cardID): map[string]interface{}{
+							controlName: map[string]interface{}{
+								"Volume": []int{volume},
+								"Mute":   ctrl.Muted,
+							},
+						},
+					},
+					"source":  "handler",
+					"control": controlName,
+				},
+			})
+		}
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) CardControlMuteHandler(w http.ResponseWriter, r *http.Request) {
+	cardIDStr := r.PathValue("cardId")
+	controlBaseName := r.PathValue("controlName")
+
+	unescapedName, err := url.PathUnescape(controlBaseName)
+	if err != nil {
+		http.Error(w, "invalid control name", http.StatusBadRequest)
+		return
+	}
+	controlBaseName = unescapedName
+
+	cardID, err := strconv.ParseUint(cardIDStr, 10, 0)
+	if err != nil {
+		http.Error(w, "invalid card id", http.StatusBadRequest)
+		return
+	}
+
+	m := newMixer()
+	if m == nil {
+		http.Error(w, "mixer unavailable", http.StatusInternalServerError)
+		return
+	}
+	if closer, ok := m.(interface{ Close() error }); ok {
+		defer closer.Close()
+	}
+
+	switchControl := s.resolveSwitchControlName(uint(cardID), controlBaseName)
+	volumeControl := s.resolveVolumeControlName(uint(cardID), controlBaseName)
+
+	currentMuted, err := m.GetMute(uint(cardID), switchControl)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("failed to get mute state: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	newMuted := !currentMuted
+
+	if err := m.SetMute(uint(cardID), switchControl, newMuted); err != nil {
+		http.Error(w, fmt.Sprintf("failed to set mute state: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	log.Printf("[POST /card/%d/control/%s/mute] muted=%v (resolved: %s)", cardID, controlBaseName, newMuted, switchControl)
+
+	if s.hub != nil {
+		ctrl := s.getControlView(uint(cardID), volumeControl)
+		if ctrl != nil {
+			log.Printf("[SSE broadcast] %s", compactEventData(ctrl))
+			go s.hub.Broadcast(sse.Event{
+				Type: "mixer-update",
+				Data: map[string]interface{}{
+					"state": map[string]interface{}{
+						fmt.Sprintf("%d", cardID): map[string]interface{}{
+							volumeControl: map[string]interface{}{
+								"Volume": []int{ctrl.VolumeNow},
+								"Mute":   newMuted,
+							},
+						},
+					},
+					"source":  "handler",
+					"control": volumeControl,
+				},
+			})
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"card":    cardID,
+		"control": controlBaseName,
+		"muted":   newMuted,
+	})
+}
+
+func (s *Server) CardControlCaptureHandler(w http.ResponseWriter, r *http.Request) {
+	cardIDStr := r.PathValue("cardId")
+	controlBaseName := r.PathValue("controlName")
+
+	unescapedName, err := url.PathUnescape(controlBaseName)
+	if err != nil {
+		http.Error(w, "invalid control name", http.StatusBadRequest)
+		return
+	}
+	controlBaseName = unescapedName
+
+	cardID, err := strconv.ParseUint(cardIDStr, 10, 0)
+	if err != nil {
+		http.Error(w, "invalid card id", http.StatusBadRequest)
+		return
+	}
+
+	m := newMixer()
+	if m == nil {
+		http.Error(w, "mixer unavailable", http.StatusInternalServerError)
+		return
+	}
+	if closer, ok := m.(interface{ Close() error }); ok {
+		defer closer.Close()
+	}
+
+	switchControl := s.resolveSwitchControlName(uint(cardID), controlBaseName)
+	volumeControl := s.resolveVolumeControlName(uint(cardID), controlBaseName)
+
+	currentMuted, err := m.GetMute(uint(cardID), switchControl)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("failed to get capture state: %v", err), http.StatusInternalServerError)
+		return
+	}
+	currentActive := !currentMuted
+	newActive := !currentActive
+	newMuted := !newActive
+
+	if err := m.SetMute(uint(cardID), switchControl, newMuted); err != nil {
+		http.Error(w, fmt.Sprintf("failed to set capture state: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	log.Printf("[POST /card/%d/control/%s/capture] active=%v (resolved: %s)", cardID, controlBaseName, newActive, switchControl)
+
+	if s.hub != nil {
+		ctrl := s.getControlView(uint(cardID), volumeControl)
+		if ctrl != nil {
+			log.Printf("[SSE broadcast] %s", compactEventData(ctrl))
+			go s.hub.Broadcast(sse.Event{
+				Type: "mixer-update",
+				Data: map[string]interface{}{
+					"state": map[string]interface{}{
+						fmt.Sprintf("%d", cardID): map[string]interface{}{
+							volumeControl: map[string]interface{}{
+								"Volume": []int{ctrl.VolumeNow},
+								"Mute":   newMuted,
+							},
+						},
+					},
+					"source":  "handler",
+					"control": volumeControl,
+				},
+			})
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"card":    cardID,
+		"control": controlBaseName,
+		"active":  newActive,
+	})
+}
 
 // compactEventData creates a compact JSON representation of an SSE broadcast for logging
 func compactEventData(ctrl *controlView) string {

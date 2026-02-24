@@ -162,11 +162,12 @@
     
     if (typeof htmx !== 'undefined') {
       var card = activeSlider.dataset.cardId
-      var control = activeSlider.dataset.controlName
+      var baseName = activeSlider.dataset.baseName || activeSlider.dataset.controlName
       var volume = activeSlider.getAttribute('aria-valuenow')
-      debug.log('[POST /control/volume] sending:', card, control, volume)
-      htmx.ajax('POST', '/control/volume', {
-        values: { card: card, control: control, volume: volume },
+      var url = '/card/' + card + '/control/' + encodeURIComponent(baseName) + '/volume'
+      debug.log('[POST ' + url + '] volume=' + volume)
+      htmx.ajax('POST', url, {
+        values: { value: volume },
         swap: 'none'
       })
     }
@@ -213,11 +214,12 @@
     // Final update to ensure server has latest value
     if (typeof htmx !== 'undefined') {
       var card = activeSlider.dataset.cardId
-      var control = activeSlider.dataset.controlName
+      var baseName = activeSlider.dataset.baseName || activeSlider.dataset.controlName
       var volume = activeSlider.getAttribute('aria-valuenow')
-      debug.log('[POST /control/volume] final:', card, control, volume)
-      htmx.ajax('POST', '/control/volume', {
-        values: { card: card, control: control, volume: volume },
+      var url = '/card/' + card + '/control/' + encodeURIComponent(baseName) + '/volume'
+      debug.log('[POST ' + url + '] final: volume=' + volume)
+      htmx.ajax('POST', url, {
+        values: { value: volume },
         swap: 'none'
       })
     }
@@ -267,11 +269,12 @@
     // Trigger HTMX request to update volume on server
     if (typeof htmx !== 'undefined') {
       var card = slider.dataset.cardId
-      var control = slider.dataset.controlName
+      var baseName = slider.dataset.baseName || slider.dataset.controlName
       var volume = slider.getAttribute('aria-valuenow')
-      debug.log('[POST /control/volume] keyboard:', card, control, volume)
-      htmx.ajax('POST', '/control/volume', {
-        values: { card: card, control: control, volume: volume },
+      var url = '/card/' + card + '/control/' + encodeURIComponent(baseName) + '/volume'
+      debug.log('[POST ' + url + '] keyboard: volume=' + volume)
+      htmx.ajax('POST', url, {
+        values: { value: volume },
         swap: 'none'
       })
     }
