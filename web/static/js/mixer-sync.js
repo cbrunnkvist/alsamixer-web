@@ -226,19 +226,19 @@
     // Connection status handling
     var statusEl = document.getElementById('connection-status')
     source.onopen = function() {
-      debug.log('[SSE] connected')
+      debug.log('[SSE] ✅ connected')
       if (statusEl) {
         statusEl.classList.remove('is-disconnected')
         var valueEl = statusEl.querySelector('[data-connection-state]')
-        if (valueEl) valueEl.textContent = 'Connected'
+        if (valueEl) valueEl.textContent = '✅ Connected'
       }
     }
     source.onerror = function() {
-      debug.log('[SSE] disconnected')
+      debug.log('[SSE] ❌ disconnected')
       if (statusEl) {
         statusEl.classList.add('is-disconnected')
         var valueEl = statusEl.querySelector('[data-connection-state]')
-        if (valueEl) valueEl.textContent = 'Disconnected'
+        if (valueEl) valueEl.textContent = '❌ Disconnected'
       }
     }
 
