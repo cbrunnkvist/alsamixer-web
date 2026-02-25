@@ -184,37 +184,6 @@ func (m *Mixer) listControlsByLibrary(card uint) ([]Control, error) {
 	return controls, nil
 }
 
-// getControlNamesInOrder returns control names in the order amixer/alsamixer use.
-// This uses amixer scontents which iterates via snd_mixer_first_elem/snd_mixer_elem_next.
-func (m *Mixer) getControlNamesInOrder(card uint) ([]string, error) {
-	cmd := exec.Command("amixer", "-c", fmt.Sprintf("%d", card), "scontents")
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return nil, fmt.Errorf("amixer failed: %w", err)
-	}
-
-	var names []string
-	lines := strings.Split(string(output), "\n")
-	for _, line := range lines {
-		// Parse: "Simple mixer control 'Master',0"
-		if strings.HasPrefix(line, "Simple mixer control '") {
-			// Extract name between single quotes
-			start := strings.Index(line, "'")
-			end := strings.LastIndex(line, "'")
-			if start != -1 && end != -1 && start < end {
-				name := line[start+1 : end]
-				names = append(names, name)
-			}
-		}
-	}
-
-	if len(names) == 0 {
-		return nil, fmt.Errorf("no controls found for card %d", card)
-	}
-
-	return names, nil
-}
-
 // GetVolume retrieves the current volume levels for a control.
 // Returns a slice of percentage values, one per channel.
 func (m *Mixer) GetVolume(card uint, control string) ([]int, error) {
