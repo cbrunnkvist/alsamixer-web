@@ -40,6 +40,14 @@ const (
 	ThemeLinuxConsole Theme = "linux-console"
 )
 
+type ViewMode string
+
+const (
+	ViewModePlayback ViewMode = "playback"
+	ViewModeCapture  ViewMode = "capture"
+	ViewModeAll      ViewMode = "all"
+)
+
 const defaultTheme = ThemeLinuxConsole
 
 var allowedThemes = map[Theme]struct{}{
@@ -159,10 +167,10 @@ func shouldSkipControl(controlName, view string) bool {
 }
 
 func (s *Server) loadCards() []cardView {
-	return s.loadCardsForFilter(-1)
+	return s.loadCardsForFilter(-1, ViewModeAll)
 }
 
-func (s *Server) loadCardsForFilter(selectedCardID int) []cardView {
+func (s *Server) loadCardsForFilter(selectedCardID int, viewMode ViewMode) []cardView {
 	if s.mixer == nil || !s.mixer.IsOpen() {
 		return nil
 	}
@@ -189,11 +197,39 @@ func (s *Server) loadCardsForFilter(selectedCardID int) []cardView {
 		}
 
 		for _, ctrl := range controls {
-			// Determine view type based on control name
-			view := controlViewType(ctrl.Name)
-
 			// Only show controls that have volume (integer type with range)
 			if ctrl.Type != "integer" {
+				continue
+			}
+
+			// Determine view type based on actual ALSA capabilities
+			hasPlaybackVol, _ := s.mixer.HasPlaybackVolume(card.ID, ctrl.Name)
+			hasPlaybackSw, _ := s.mixer.HasPlaybackSwitch(card.ID, ctrl.Name)
+			hasCaptureVol, _ := s.mixer.HasCaptureVolume(card.ID, ctrl.Name)
+			hasCaptureSw, _ := s.mixer.HasCaptureSwitch(card.ID, ctrl.Name)
+
+			isPlayback := hasPlaybackVol || hasPlaybackSw
+			isCapture := hasCaptureVol || hasCaptureSw
+
+			// Determine view type string
+			var view string
+			if isPlayback && !isCapture {
+				view = "playback"
+			} else if isCapture && !isPlayback {
+				view = "capture"
+			} else if isCapture && isPlayback {
+				// Controls with both capabilities - treat as capture if name suggests it
+				view = controlViewType(ctrl.Name)
+			} else {
+				// No recognized capabilities - skip
+				continue
+			}
+
+			// Filter based on view mode (matching alsamixer logic)
+			if viewMode == ViewModePlayback && view != "playback" {
+				continue
+			}
+			if viewMode == ViewModeCapture && view != "capture" {
 				continue
 			}
 
@@ -217,7 +253,7 @@ func (s *Server) loadCardsForFilter(selectedCardID int) []cardView {
 			// Check if there's a corresponding capture switch (for capture controls)
 			var hasCapture bool
 			var captureActive bool
-			if view == "capture" {
+			if view == "capture" || isCapture {
 				captureControlName := strings.Replace(ctrl.Name, " Volume", " Switch", 1)
 				capMuted, capErr := s.mixer.GetMute(card.ID, captureControlName)
 				hasCapture = capErr == nil
@@ -414,7 +450,7 @@ func (s *Server) setupRoutes() {
 
 		data := pageData{
 			Theme:        string(theme),
-			Cards:        s.loadCardsForFilter(int(selectedCardID)),
+			Cards:        s.loadCardsForFilter(int(selectedCardID), ViewModeAll),
 			SelectedCard: selectedCardID,
 			DefaultCard:  resolvedDefault,
 			AllCards:     allCards,

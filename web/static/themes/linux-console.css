@@ -55,6 +55,12 @@ body {
   overflow: hidden;
 }
 
+@media (min-width: 640px) {
+  .mixer-card__controls {
+    justify-content: space-evenly;
+  }
+}
+
 .mixer-control {
   flex: 1 1 96px;
   min-width: 88px;

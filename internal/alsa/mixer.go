@@ -13,6 +13,12 @@ import (
 	alsalib "github.com/gen2brain/alsa"
 )
 
+var volumeSuffixes = []string{
+	" Playback Volume",
+	" Capture Volume",
+	" Volume",
+}
+
 // Card represents an ALSA sound card
 type Card struct {
 	ID   uint   // Card index
@@ -366,6 +372,79 @@ func (m *Mixer) SetMute(card uint, control string, muted bool) error {
 	}
 
 	return nil
+}
+
+// HasPlaybackVolume checks if a control has playback volume capability.
+// Uses amixer to get the capabilities string which indicates pvolume (playback volume).
+func (m *Mixer) HasPlaybackVolume(card uint, control string) (bool, error) {
+	capabilities, err := m.getControlCapabilities(card, control)
+	if err != nil {
+		return false, err
+	}
+	return strings.Contains(capabilities, "pvolume"), nil
+}
+
+// HasPlaybackSwitch checks if a control has playback switch (mute) capability.
+// Uses amixer to get the capabilities string which indicates pswitch (playback switch).
+func (m *Mixer) HasPlaybackSwitch(card uint, control string) (bool, error) {
+	capabilities, err := m.getControlCapabilities(card, control)
+	if err != nil {
+		return false, err
+	}
+	return strings.Contains(capabilities, "pswitch"), nil
+}
+
+// HasCaptureVolume checks if a control has capture volume capability.
+// Uses amixer to get the capabilities string which indicates cvolume (capture volume).
+func (m *Mixer) HasCaptureVolume(card uint, control string) (bool, error) {
+	capabilities, err := m.getControlCapabilities(card, control)
+	if err != nil {
+		return false, err
+	}
+	return strings.Contains(capabilities, "cvolume"), nil
+}
+
+// HasCaptureSwitch checks if a control has capture switch capability.
+// Uses amixer to get the capabilities string which indicates cswitch (capture switch).
+func (m *Mixer) HasCaptureSwitch(card uint, control string) (bool, error) {
+	capabilities, err := m.getControlCapabilities(card, control)
+	if err != nil {
+		return false, err
+	}
+	return strings.Contains(capabilities, "cswitch"), nil
+}
+
+// getControlCapabilities runs amixer to get the capabilities string for a control.
+// The capabilities string contains indicators like pvolume, pswitch, cvolume, cswitch.
+func (m *Mixer) getControlCapabilities(card uint, control string) (string, error) {
+	// Extract base name (remove " Playback Volume", " Capture Volume", " Volume" suffixes)
+	baseName := control
+	for _, suffix := range volumeSuffixes {
+		if strings.HasSuffix(baseName, suffix) {
+			baseName = strings.TrimSuffix(baseName, suffix)
+			break
+		}
+	}
+
+	cmd := exec.Command("amixer", "-c", fmt.Sprintf("%d", card), "sget", baseName)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("failed to get capabilities for '%s': %w", baseName, err)
+	}
+
+	// Parse the capabilities line: "  Capabilities: pvolume pvolume-joined pswitch pswitch-joined"
+	lines := strings.Split(string(output), "\n")
+	for _, line := range lines {
+		if strings.Contains(line, "Capabilities:") {
+			// Extract everything after "Capabilities:"
+			parts := strings.SplitN(line, "Capabilities:", 2)
+			if len(parts) > 1 {
+				return strings.TrimSpace(parts[1]), nil
+			}
+		}
+	}
+
+	return "", fmt.Errorf("could not find capabilities for control '%s'", baseName)
 }
 
 // Close cleans up resources and marks the mixer as closed

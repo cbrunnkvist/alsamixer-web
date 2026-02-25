@@ -62,3 +62,23 @@ func (m *Mixer) Close() error { return nil }
 
 // IsOpen always reports false for the stub mixer.
 func (m *Mixer) IsOpen() bool { return false }
+
+// HasPlaybackVolume returns false with an error for stub.
+func (m *Mixer) HasPlaybackVolume(card uint, control string) (bool, error) {
+	return false, fmt.Errorf("alsa mixer is not supported on this platform")
+}
+
+// HasPlaybackSwitch returns false with an error for stub.
+func (m *Mixer) HasPlaybackSwitch(card uint, control string) (bool, error) {
+	return false, fmt.Errorf("alsa mixer is not supported on this platform")
+}
+
+// HasCaptureVolume returns false with an error for stub.
+func (m *Mixer) HasCaptureVolume(card uint, control string) (bool, error) {
+	return false, fmt.Errorf("alsa mixer is not supported on this platform")
+}
+
+// HasCaptureSwitch returns false with an error for stub.
+func (m *Mixer) HasCaptureSwitch(card uint, control string) (bool, error) {
+	return false, fmt.Errorf("alsa mixer is not supported on this platform")
+}

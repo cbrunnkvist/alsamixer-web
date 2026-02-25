@@ -232,6 +232,12 @@ body {
   gap: 0.5rem;
 }
 
+@media (min-width: 640px) {
+  .mixer-card__controls {
+    justify-content: space-evenly;
+  }
+}
+
 /* ============================================================
    Mixer Controls (Individual Controls)
    ============================================================ */
