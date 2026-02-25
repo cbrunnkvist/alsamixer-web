@@ -88,6 +88,22 @@ func (s *Server) CardControlVolumeHandler(w http.ResponseWriter, r *http.Request
 		defer closer.Close()
 	}
 
+	// Check if control exists before trying to set it
+	controls, err := m.ListControls(uint(cardID))
+	if err == nil {
+		found := false
+		for _, ctrl := range controls {
+			if ctrl.Name == controlName {
+				found = true
+				break
+			}
+		}
+		if !found {
+			http.Error(w, "control not found", http.StatusBadRequest)
+			return
+		}
+	}
+
 	if err := m.SetVolume(uint(cardID), controlName, []int{volume}); err != nil {
 		http.Error(w, fmt.Sprintf("failed to set volume: %v", err), http.StatusInternalServerError)
 		return
@@ -295,6 +311,7 @@ type mixer interface {
 	GetMute(card uint, control string) (bool, error)
 	SetMute(card uint, control string, muted bool) error
 	SetVolume(card uint, control string, values []int) error
+	ListControls(card uint) ([]alsa.Control, error)
 }
 
 // newMixer constructs a real ALSA mixer. Tests may override this
@@ -455,6 +472,22 @@ func (s *Server) VolumeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if closer, ok := m.(interface{ Close() error }); ok {
 		defer closer.Close()
+	}
+
+	// Validate control exists before trying to set it
+	controls, err := m.ListControls(cardID)
+	if err == nil {
+		found := false
+		for _, ctrl := range controls {
+			if ctrl.Name == control {
+				found = true
+				break
+			}
+		}
+		if !found {
+			http.Error(w, "control not found", http.StatusBadRequest)
+			return
+		}
 	}
 
 	if err := m.SetVolume(cardID, control, []int{volume}); err != nil {

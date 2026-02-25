@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/user/alsamixer-web/internal/alsa"
 	"github.com/user/alsamixer-web/internal/config"
 	"github.com/user/alsamixer-web/internal/sse"
 )
@@ -22,6 +23,25 @@ type fakeMixer struct {
 	called  bool
 	err     error
 }
+
+func (f *fakeMixer) ListCards() ([]alsa.Card, error) {
+	return []alsa.Card{{ID: 0, Name: "Test Card"}}, nil
+}
+
+func (f *fakeMixer) ListControls(card uint) ([]alsa.Control, error) {
+	return []alsa.Control{
+		{Name: "Master Playback Volume", Type: "integer", Min: 0, Max: 100, Step: 1, Count: 2},
+		{Name: "Master Playback Switch", Type: "boolean"},
+	}, nil
+}
+
+func (f *fakeMixer) GetVolume(card uint, control string) ([]int, error) {
+	return []int{75, 75}, nil
+}
+
+func (f *fakeMixer) Close() error { return nil }
+
+func (f *fakeMixer) IsOpen() bool { return true }
 
 func (f *fakeMixer) GetMute(card uint, control string) (bool, error) {
 	return false, nil
@@ -203,7 +223,7 @@ func TestVolumeHandler_Success(t *testing.T) {
 
 	form := url.Values{}
 	form.Set("card", "0")
-	form.Set("control", "Master")
+	form.Set("control", "Master Playback Volume")
 	form.Set("volume", "75")
 
 	req := httptest.NewRequest(http.MethodPost, "/control/volume", strings.NewReader(form.Encode()))
@@ -224,12 +244,104 @@ func TestVolumeHandler_Success(t *testing.T) {
 		t.Errorf("expected card 0, got %d", fm.card)
 	}
 
-	if fm.control != "Master" {
-		t.Errorf("expected control 'Master', got %q", fm.control)
+	if fm.control != "Master Playback Volume" {
+		t.Errorf("expected control 'Master Playback Volume', got %q", fm.control)
 	}
 
 	if len(fm.values) != 1 || fm.values[0] != 75 {
 		t.Errorf("expected values [75], got %v", fm.values)
+	}
+}
+
+func TestVolumeHandler_InvalidControl(t *testing.T) {
+	cfg := &config.Config{
+		Port:     0,
+		BindAddr: "127.0.0.1",
+	}
+	hub := sse.NewHub()
+	srv := NewServer(cfg, hub)
+
+	fm := &fakeMixer{}
+	origNewMixer := newMixer
+	newMixer = func() mixer {
+		return fm
+	}
+	defer func() {
+		newMixer = origNewMixer
+	}()
+
+	form := url.Values{}
+	form.Set("card", "0")
+	form.Set("control", "NonExistent Control")
+	form.Set("volume", "75")
+
+	req := httptest.NewRequest(http.MethodPost, "/control/volume", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp := httptest.NewRecorder()
+	srv.VolumeHandler(resp, req)
+
+	// Should return 400 because control doesn't exist
+	if resp.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d for non-existent control, got %d", http.StatusBadRequest, resp.Code)
+	}
+
+	// SetVolume should not have been called
+	if fm.called {
+		t.Error("expected SetVolume NOT to be called for invalid control")
+	}
+}
+
+func TestVolumeHandler_VolumeClamping(t *testing.T) {
+	cfg := &config.Config{
+		Port:     0,
+		BindAddr: "127.0.0.1",
+	}
+	hub := sse.NewHub()
+	srv := NewServer(cfg, hub)
+
+	tests := []struct {
+		name           string
+		inputVolume    string
+		expectedVolume int
+	}{
+		{"volume above 100 should clamp to 100", "150", 100},
+		{"volume below 0 should clamp to 0", "-50", 0},
+		{"valid volume 75", "75", 75},
+		{"volume at boundary 0", "0", 0},
+		{"volume at boundary 100", "100", 100},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fm := &fakeMixer{}
+			origNewMixer := newMixer
+			newMixer = func() mixer {
+				return fm
+			}
+			defer func() {
+				newMixer = origNewMixer
+			}()
+
+			form := url.Values{}
+			form.Set("card", "0")
+			form.Set("control", "Master Playback Volume")
+			form.Set("volume", tt.inputVolume)
+
+			req := httptest.NewRequest(http.MethodPost, "/control/volume", strings.NewReader(form.Encode()))
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+			resp := httptest.NewRecorder()
+			srv.VolumeHandler(resp, req)
+
+			if resp.Code != http.StatusNoContent {
+				t.Errorf("expected status %d, got %d", http.StatusNoContent, resp.Code)
+			}
+
+			if len(fm.values) != 1 || fm.values[0] != tt.expectedVolume {
+				t.Errorf("expected volume %d, got %v", tt.expectedVolume, fm.values)
+			}
+		})
 	}
 }
 

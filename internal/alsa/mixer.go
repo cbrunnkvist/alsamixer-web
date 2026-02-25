@@ -161,13 +161,21 @@ func (m *Mixer) GetVolume(card uint, control string) ([]int, error) {
 			if err != nil {
 				return nil, fmt.Errorf("failed to get channel %d value: %w", i, err)
 			}
-			values[i] = int((val - min) * 100 / (max - min))
+			if max > min {
+				values[i] = int((val - min) * 100 / (max - min))
+			} else {
+				values[i] = 0
+			}
 		}
 		return values, nil
 	}
 
 	for i := 0; i < numChannels; i++ {
-		values[i] = int((int(rawValues[i]) - min) * 100 / (max - min))
+		if max > min {
+			values[i] = int((int(rawValues[i]) - min) * 100 / (max - min))
+		} else {
+			values[i] = 0
+		}
 	}
 
 	return values, nil
@@ -251,7 +259,12 @@ func (m *Mixer) setVolumeLibrary(card uint, control string, values []int) error 
 
 	// Set each channel individually
 	if len(values) == 1 {
-		raw := min + (values[0]*(max-min))/100
+		var raw int
+		if max > min {
+			raw = min + (values[0]*(max-min))/100
+		} else {
+			raw = min
+		}
 		for i := 0; i < numChannels; i++ {
 			if err := ctl.SetValue(uint(i), raw); err != nil {
 				return fmt.Errorf("failed to set channel %d: %w", i, err)
@@ -259,7 +272,12 @@ func (m *Mixer) setVolumeLibrary(card uint, control string, values []int) error 
 		}
 	} else {
 		for i := 0; i < numChannels && i < len(values); i++ {
-			raw := min + (values[i]*(max-min))/100
+			var raw int
+			if max > min {
+				raw = min + (values[i]*(max-min))/100
+			} else {
+				raw = min
+			}
 			if err := ctl.SetValue(uint(i), raw); err != nil {
 				return fmt.Errorf("failed to set channel %d: %w", i, err)
 			}

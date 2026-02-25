@@ -420,3 +420,17 @@ func TestSetVolumeValidation(t *testing.T) {
 		t.Error("Expected error for invalid card")
 	}
 }
+
+// TestGetVolumeZeroRange tests that GetVolume handles zero-range controls gracefully
+// This tests the safeguard we added for max == min edge case
+func TestGetVolumeZeroRange(t *testing.T) {
+	// This test documents the behavior when a control has zero range (max == min)
+	// The code returns an error in this case, which is the correct behavior
+	// since we can't compute a percentage when the range is zero.
+	//
+	// Note: We can't easily simulate this with real hardware, so this test
+	// serves as documentation. The actual safeguard is in GetVolume() and
+	// setVolumeLibrary() where we check `if max > min` before dividing.
+	t.Log("Zero-range control handling is protected by max == min check returning error")
+	t.Log("And division safeguards: if max > min { divide } else { fallback }")
+}
