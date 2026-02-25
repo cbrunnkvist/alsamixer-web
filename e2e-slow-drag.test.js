@@ -49,7 +49,7 @@ async function runTests() {
     // Get ALSA Master volume
     async function getMasterVolume() {
         const output = await amixer('sget Master');
-        const match = output.match(/Front Left: Playback \d+ \[(\d+)%\]/);
+        const match = output.match(/(?:Front Left|Mono): Playback \d+ \[(\d+)%\]/);
         return match ? parseInt(match[1], 10) : null;
     }
     

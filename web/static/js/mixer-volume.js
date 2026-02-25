@@ -150,6 +150,7 @@
   
   // Throttling for server updates during drag
   var lastSendTime = 0
+  var lastSentVolume = null
   var THROTTLE_MS = 100
 
   function sendVolumeThrottled() {
@@ -158,7 +159,11 @@
     var now = Date.now()
     if (now - lastSendTime < THROTTLE_MS) return
     
+    var volume = activeSlider.getAttribute('aria-valuenow')
+    if (volume === lastSentVolume) return
+    
     lastSendTime = now
+    lastSentVolume = volume
     
     if (typeof htmx !== 'undefined') {
       var card = activeSlider.dataset.cardId
@@ -178,6 +183,7 @@
     if (!slider) return
 
     activeSlider = slider
+    lastSentVolume = null
     // Mark this slider as actively being dragged
     slider.classList.add('volume-slider--dragging')
     
@@ -221,12 +227,16 @@
       var card = activeSlider.dataset.cardId
       var baseName = activeSlider.dataset.baseName || activeSlider.dataset.controlName
       var volume = activeSlider.getAttribute('aria-valuenow')
-      var url = '/card/' + card + '/control/' + encodeURIComponent(baseName) + '/volume'
-      debug.log('[POST ' + url + '] final: volume=' + volume)
-      htmx.ajax('POST', url, {
-        values: { value: volume },
-        swap: 'none'
-      })
+      
+      if (volume !== lastSentVolume) {
+        lastSentVolume = volume
+        var url = '/card/' + card + '/control/' + encodeURIComponent(baseName) + '/volume'
+        debug.log('[POST ' + url + '] final: volume=' + volume)
+        htmx.ajax('POST', url, {
+          values: { value: volume },
+          swap: 'none'
+        })
+      }
     }
     
     // Clear active drag - SSE updates can now resume
@@ -263,6 +273,10 @@
       delta = -step
     }
     var next = clamp(current + delta, min, max)
+    
+    if (next === current) {
+      return
+    }
 
     syncSliderUI(slider, next, 'keyboard')
 
