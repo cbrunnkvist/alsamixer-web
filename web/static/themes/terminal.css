@@ -1,666 +1,311 @@
 /**
  * Terminal/ASCII Theme for ALSA Mixer Web
- * Mimics the classic alsamixer terminal interface
+ * 
+ * Aesthetic: High-end vintage terminal (IBM 3270 / DEC VT100 style)
+ * Optimized for efficiency: No expensive animations or heavy filters.
  */
 
-/* ============================================================
-   CSS Custom Properties - Colors and values that can be overridden
-   ============================================================ */
 :root {
-  /* Core terminal colors */
-  --term-bg: #2b2f36;
-  --term-bg-secondary: #0a0a0a;
-  --term-text: #00ff00;
-  --term-text-dim: #00aa00;
-  --term-text-bright: #33ff33;
-  --term-white: #ffffff;
-  --term-gray: #888888;
-  --term-dark-gray: #333333;
+  /* Core Palette - Classic Phosphor Green */
+  --term-bg: #0c0e0c;
+  --term-bg-alt: #141714;
+  --term-text: #33ff66; /* Vibrant Phosphor Green */
+  --term-text-dim: rgba(51, 255, 102, 0.6);
+  --term-text-hi: #99ffbb;
   
-  /* Accent colors */
-  --term-accent: #00ff00;
-  --term-accent-bright: #33ff33;
-  --term-warning: #ffaa00;
-  --term-error: #ff0000;
+  --term-border: #2db34a;
+  --term-border-dim: #1a662a;
   
-  /* Focus and interactive */
-  --term-focus-color: #00ff00;
-  --term-focus-width: 2px;
-  --term-focus-offset: 2px;
+  /* Modern Mono Font Stack */
+  --term-font: "JetBrains Mono", "Fira Code", "Source Code Pro", "ui-monospace", "Cascadia Code", "Segoe UI Mono", "Liberation Mono", "Menlo", "Monaco", monospace;
   
-  /* Borders */
-  --term-border-color: #00aa00;
-  --term-border-dim: #004400;
-  
-  /* Volume bar characters */
-  --term-bar-full: "█";
-  --term-bar-empty: "░";
-  --term-bar-half: "▓";
-  
-  /* Typography */
-  --term-font: "Courier New", Consolas, "Liberation Mono", "DejaVu Sans Mono", monospace;
-  --term-font-size: 14px;
-  --term-line-height: 1.4;
+  /* Scanline Pattern */
+  --term-scanline: repeating-linear-gradient(
+    rgba(0, 0, 0, 0) 0px,
+    rgba(0, 0, 0, 0.1) 1px,
+    rgba(0, 0, 0, 0) 2px
+  );
 }
 
-/* ============================================================
-   Base Reset and Typography
-   ============================================================ */
+/* ============================================
+   BASE RESET
+   ============================================ */
 
-body {
-  font-family: var(--term-font);
-  font-size: var(--term-font-size);
-  line-height: var(--term-line-height);
+body.theme-terminal {
   background-color: var(--term-bg);
+  background-image: var(--term-scanline);
+  background-size: 100% 3px;
   color: var(--term-text);
-  /* High contrast text - #0f0 on #000 gives 15.3:1 ratio, exceeds WCAG AAA */
-}
-
-/* ============================================================
-   App Shell
-   ============================================================ */
-
-.app-shell {
-  background-color: var(--term-bg);
-}
-
-.app-header {
-  border-bottom: 1px solid var(--term-border-color);
-  background-color: var(--term-bg);
-  padding: 0.5rem 1rem;
-}
-
-.app-title {
   font-family: var(--term-font);
-  font-size: 1rem;
-  font-weight: bold;
-  color: var(--term-text-bright);
-  margin: 0;
-  letter-spacing: 0;
-  text-transform: none;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: none; /* Keep it crisp/pixelated */
+  -moz-osx-font-smoothing: unset;
+  text-shadow: 0 0 5px rgba(51, 255, 102, 0.4); /* Cheap bloom */
 }
 
-.app-title::before {
-  content: "┌─ ";
-  color: var(--term-border-color);
-}
+/* ============================================
+   APP SHELL
+   ============================================ */
 
-.app-title::after {
-  content: " ─┐";
-  color: var(--term-border-color);
-}
-
-.app-main {
+body.theme-terminal .app-header {
   background-color: var(--term-bg);
-  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--term-border);
+  padding: 1rem 2rem;
 }
 
-.app-footer {
-  border-top: 1px solid var(--term-border-dim);
-  background-color: var(--term-bg-secondary);
-  padding: 0.5rem 1rem;
-  font-size: 0.85rem;
-}
-
-/* ============================================================
-   Connection Status
-   ============================================================ */
-
-.connection-status {
-  color: var(--term-text-dim);
-  font-family: var(--term-font);
-}
-
-.connection-status__label {
-  text-transform: uppercase;
-  font-size: 0.75rem;
+body.theme-terminal .app-title {
+  font-weight: 700;
+  font-size: 1.2rem;
   letter-spacing: 0.1em;
-  opacity: 1;
-  color: var(--term-gray);
-}
-
-.connection-status__label::before {
-  content: "[";
-  color: var(--term-border-color);
-}
-
-.connection-status__label::after {
-  content: "]";
-  color: var(--term-border-color);
-}
-
-.connection-status__value {
-  color: var(--term-text);
-  font-variant-numeric: tabular-nums;
-}
-
-.connection-status__value::before {
-  content: "► ";
-  color: var(--term-accent);
-}
-
-/* ============================================================
-   Mixer Shell and Stream
-   ============================================================ */
-
-.mixer-shell {
-  max-width: none;
-  margin-inline: 0;
-}
-
-.mixer-stream {
-  border: 1px solid var(--term-border-dim);
-  border-radius: 0;
-  padding: 0.75rem;
-  background-color: var(--term-bg);
-}
-
-.mixer-placeholder {
-  color: var(--term-text-dim);
-  font-style: normal;
-  margin: 0;
-}
-
-.mixer-placeholder::before {
-  content: "... ";
-  color: var(--term-accent);
-}
-
-/* ============================================================
-   Mixer Cards (Sound Cards)
-   ============================================================ */
-
-.mixer-card {
-  margin-bottom: 1.5rem;
-  border: 1px solid var(--term-border-color);
-  background-color: var(--term-bg);
-}
-
-.mixer-card__header {
-  border-bottom: 1px solid var(--term-border-dim);
-  padding: 0.5rem 0.75rem;
-  background-color: var(--term-bg-secondary);
-}
-
-.mixer-card__title-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.75rem;
-}
-
-.mixer-card__index {
-  font-family: var(--term-font);
-  font-size: 0.75rem;
+  color: var(--term-text-hi);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--term-gray);
-  border: 1px solid var(--term-border-dim);
-  padding: 0.1rem 0.35rem;
-  font-variant-numeric: tabular-nums;
 }
 
-.mixer-card__title {
-  font-family: var(--term-font);
-  font-size: 1rem;
-  font-weight: bold;
-  color: var(--term-text-bright);
-  margin: 0 0 0.25rem 0;
+body.theme-terminal .app-title::before { content: "[$] "; color: var(--term-border); }
+body.theme-terminal .app-title::after { content: " _"; animation: blink 1s step-end infinite; }
+
+@keyframes blink {
+  50% { opacity: 0; }
 }
 
-.mixer-card__title::before {
-  content: "│ ";
-  color: var(--term-border-color);
+body.theme-terminal .app-main {
+  padding: 2rem;
 }
 
-.mixer-card__description {
-  font-family: var(--term-font);
+body.theme-terminal .app-footer {
+  background-color: var(--term-bg-alt);
+  border-top: 1px solid var(--term-border-dim);
+  padding: 1rem 2rem;
   font-size: 0.8rem;
-  color: var(--term-gray);
-  margin: 0;
+  color: var(--term-text-dim);
 }
 
-.mixer-card__description::before {
-  content: "│ └─ ";
-  color: var(--term-border-dim);
+/* ============================================
+   MIXER COMPONENTS
+   ============================================ */
+
+body.theme-terminal .mixer-stream {
+  background: transparent;
+  border: none;
+  padding: 0;
 }
 
-.mixer-card__controls {
-  padding: 0.5rem;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+body.theme-terminal .mixer-card {
+  background-color: var(--term-bg-alt);
+  border: 1px solid var(--term-border);
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  position: relative;
 }
 
-@media (min-width: 640px) {
-  .mixer-card__controls {
-    justify-content: space-evenly;
-  }
+/* Pseudo Box Drawing for Card */
+body.theme-terminal .mixer-card::before {
+  content: " ";
+  position: absolute;
+  top: -1px; left: -1px; right: -1px; bottom: -1px;
+  border: 1px solid var(--term-border);
+  pointer-events: none;
 }
 
-/* ============================================================
-   Mixer Controls (Individual Controls)
-   ============================================================ */
-
-.mixer-control {
-  border: 1px solid var(--term-border-dim);
-  padding: 0.5rem 0.75rem;
-  background-color: var(--term-bg);
-  flex: 1 1 280px;
-  min-width: 260px;
-  max-width: 100%;
+body.theme-terminal .mixer-card__header {
+  border-bottom: 1px dashed var(--term-border-dim);
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
 }
 
-.mixer-control__header {
-  margin-bottom: 0.5rem;
-}
-
-.mixer-control__title-row {
+body.theme-terminal .mixer-card__title {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--term-text-hi);
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 0.5rem;
-  flex-wrap: wrap;
 }
 
-.mixer-control__label {
-  font-family: var(--term-font);
-  font-size: 0.95rem;
-  font-weight: bold;
-  color: var(--term-text);
-  margin: 0 0 0.25rem 0;
+body.theme-terminal .mixer-card__title::before {
+  content: "[ DEVICE: ";
+  color: var(--term-border-dim);
+  font-weight: 400;
 }
 
-.mixer-control__label::before {
-  content: "> ";
-  color: var(--term-accent);
+body.theme-terminal .mixer-card__title::after {
+  content: " ]";
+  color: var(--term-border-dim);
+  font-weight: 400;
 }
 
-.mixer-control__type-badges {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 0.25rem;
+body.theme-terminal .mixer-card__controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 1.5rem;
 }
 
-.mixer-control__type-badge {
+/* ============================================
+   CONTROL CARDS
+   ============================================ */
+
+body.theme-terminal .mixer-control {
   border: 1px solid var(--term-border-dim);
-  padding: 0.05rem 0.3rem;
-  font-size: 0.65rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--term-text-dim);
-}
-
-.mixer-control__type-badge--volume {
-  border-color: var(--term-accent);
-  color: var(--term-accent);
-}
-
-.mixer-control__type-badge--mute {
-  border-color: var(--term-warning);
-  color: var(--term-warning);
-}
-
-.mixer-control__type-badge--capture {
-  border-color: var(--term-accent-bright);
-  color: var(--term-accent-bright);
-}
-
-.mixer-control__description {
-  font-family: var(--term-font);
-  font-size: 0.75rem;
-  color: var(--term-gray);
-  margin: 0;
-}
-
-.mixer-control__body {
+  padding: 1rem;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 1rem;
+  background: rgba(0, 0, 0, 0.2);
 }
 
-/* ============================================================
-   Volume Slider - ASCII Style
-   ============================================================ */
-
-.mixer-control__volume {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.25rem 0;
-  cursor: pointer;
-  position: relative;
+body.theme-terminal .mixer-control:hover {
+  border-color: var(--term-border);
+  background: rgba(51, 255, 102, 0.05);
 }
 
-.mixer-control__volume-track {
-  flex: 1;
-  height: 1rem;
-  background-color: var(--term-bg);
-  border: 1px solid var(--term-border-dim);
-  position: relative;
-  font-family: var(--term-font);
+body.theme-terminal .mixer-control__label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--term-text-hi);
+  text-transform: uppercase;
+  margin: 0;
   overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-/* Use CSS-generated block characters for volume bar */
-.mixer-control__volume-track::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0;
-  height: 100%;
-  background: repeating-linear-gradient(
-    90deg,
-    var(--term-accent) 0px,
-    var(--term-accent) 8px,
-    transparent 8px,
-    transparent 10px
-  );
-  width: var(--volume-percent, 50%);
+/* ============================================
+   ASCII VERTICAL SLIDER
+   ============================================ */
+
+body.theme-terminal .mixer-control__volume {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
 }
 
-/* Alternative: use Unicode block characters */
-.mixer-control__volume-fill {
-  height: 100%;
-  width: var(--volume-percent, 50%);
-  background-color: var(--term-accent);
-  position: relative;
-}
-
-.mixer-control__value {
-  font-family: var(--term-font);
-  font-size: 0.85rem;
-  color: var(--term-text);
-  font-variant-numeric: tabular-nums;
-  min-width: 3.5ch;
-  text-align: right;
-}
-
-.mixer-control__value::after {
-  content: "%";
-  color: var(--term-gray);
-}
-
-/* Volume slider hover */
-.mixer-control__volume:hover .mixer-control__volume-track {
-  border-color: var(--term-border-color);
-}
-
-.mixer-control__volume:hover .mixer-control__volume-fill {
-  background-color: var(--term-accent-bright);
-}
-
-/* ============================================================
-   Toggle Buttons - Mute and Capture
-   ============================================================ */
-
-.mixer-control__toggle {
-  font-family: var(--term-font);
-  font-size: 0.85rem;
-  background-color: var(--term-bg);
+body.theme-terminal .mixer-control__volume-track {
+  width: 32px;
+  height: 180px;
+  background-color: #000;
   border: 1px solid var(--term-border-dim);
+  position: relative;
+  cursor: pointer;
+}
+
+body.theme-terminal .mixer-control__volume-fill {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: var(--volume-percent, 0%);
+  background-color: var(--term-text);
+  /* ASCII Pattern Fill */
+  background-image: repeating-linear-gradient(
+    0deg,
+    var(--term-text) 0px,
+    var(--term-text) 6px,
+    var(--term-bg) 6px,
+    var(--term-bg) 8px
+  );
+  transition: height 0.1s steps(20); /* Mechanical steps feel */
+}
+
+body.theme-terminal .mixer-control__value {
+  font-family: var(--term-font);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--term-text-hi);
+}
+
+body.theme-terminal .mixer-control__value::before { content: "("; color: var(--term-border-dim); }
+body.theme-terminal .mixer-control__value::after { content: "%)"; color: var(--term-border-dim); }
+
+/* ============================================
+   ASCII TOGGLES
+   ============================================ */
+
+body.theme-terminal .mixer-control__toggle {
+  background: transparent;
+  border: 1px solid var(--term-border-dim);
+  color: var(--term-text-dim);
+  padding: 0.4rem;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.1s ease;
+  width: 100%;
+  text-align: center;
+}
+
+body.theme-terminal .mixer-control__toggle::before { content: "[ "; }
+body.theme-terminal .mixer-control__toggle::after { content: " ]"; }
+
+body.theme-terminal .mixer-control__toggle:hover {
+  border-color: var(--term-border);
+  color: var(--term-text);
+}
+
+body.theme-terminal .mixer-control__toggle[aria-checked="true"] {
+  background-color: var(--term-text);
+  border-color: var(--term-text);
+  color: #000;
+  text-shadow: none;
+}
+
+/* ============================================
+   FORM ELEMENTS
+   ============================================ */
+
+body.theme-terminal select {
+  background-color: #000;
+  border: 1px solid var(--term-border);
   color: var(--term-text);
   padding: 0.25rem 0.5rem;
-  cursor: pointer;
-  text-align: left;
-  transition: none;
+  font-family: var(--term-font);
+  font-size: 0.8rem;
 }
 
-.mixer-control__toggle:hover {
-  border-color: var(--term-border-color);
-  background-color: var(--term-bg-secondary);
+body.theme-terminal .card-switcher__label,
+body.theme-terminal .theme-switcher__label {
+  font-size: 0.7rem;
+  color: var(--term-text-dim);
 }
 
-/* Mute toggle - [M] style */
-.mixer-control__toggle--mute::before {
-  content: "[M] ";
-  color: var(--term-gray);
+/* Status */
+body.theme-terminal .connection-status {
+  color: var(--term-text-dim);
 }
 
-.mixer-control__toggle--mute[aria-checked="true"]::before {
-  content: "[M] ";
-  color: var(--term-warning);
-}
-
-.mixer-control__toggle--mute[aria-checked="true"] {
-  color: var(--term-warning);
-}
-
-/* Capture toggle - [C] style */
-.mixer-control__toggle--capture::before {
-  content: "[C] ";
-  color: var(--term-gray);
-}
-
-.mixer-control__toggle--capture[aria-checked="true"]::before {
-  content: "[C] ";
-  color: var(--term-accent);
-}
-
-.mixer-control__toggle--capture[aria-checked="true"] {
-  color: var(--term-accent);
-}
-
-.mixer-control__toggle-label {
-  color: inherit;
-}
-
-/* ============================================================
-   Focus Styles - High Visibility on Dark Background
-   ============================================================ */
-
-/* Override accessibility.css focus for terminal theme */
-:where(a,
-button,
-input,
-textarea,
-select,
-[role="button"],
-[role="slider"],
-[role="switch"]):focus-visible {
-  outline: var(--term-focus-width) solid var(--term-focus-color);
-  outline-offset: var(--term-focus-offset);
-}
-
-/* Specific focus styles for terminal elements */
-.mixer-control__volume:focus-visible {
-  outline: var(--term-focus-width) solid var(--term-focus-color);
-  outline-offset: var(--term-focus-offset);
-  background-color: var(--term-bg-secondary);
-}
-
-.mixer-control__toggle:focus-visible {
-  outline: var(--term-focus-width) solid var(--term-focus-color);
-  outline-offset: 1px;
-  border-color: var(--term-accent);
-}
-
-.mixer-card:focus-within {
-  border-color: var(--term-border-color);
-}
-
-/* Skip link focus */
-.skip-link:focus-visible {
-  transform: translateY(0);
-  outline: var(--term-focus-width) solid var(--term-focus-color);
-  outline-offset: 2px;
-  background-color: var(--term-bg);
+body.theme-terminal .connection-status[data-status="connected"] {
   color: var(--term-text);
-  border: 1px solid var(--term-border-color);
-  box-shadow: none;
 }
 
-/* Selection color */
-::selection {
-  background-color: var(--term-accent);
-  color: var(--term-bg);
+/* Hide clutter or style it as terminal tags */
+body.theme-terminal .mixer-control__type-badges {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
 }
 
-/* ============================================================
-   Screen Reader Only (consistent with accessibility.css)
-   ============================================================ */
-
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
+body.theme-terminal .mixer-control__type-badge {
+  border: 1px solid var(--term-border-dim);
+  padding: 0.1rem 0.4rem;
+  font-size: 0.6rem;
+  color: var(--term-text-dim);
+  text-transform: uppercase;
 }
 
-/* ============================================================
-   Responsive Design
-   ============================================================ */
+body.theme-terminal .mixer-control__type-badge::before { content: "<"; }
+body.theme-terminal .mixer-control__type-badge::after { content: ">"; }
 
-@media (max-width: 640px) {
-  :root {
-    --term-font-size: 13px;
-  }
-  
-  .app-header,
-  .app-main,
-  .app-footer {
-    padding: 0.5rem;
-  }
-  
-  .mixer-card__title-row {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.25rem;
-  }
-  
-  .mixer-control__title-row {
-    align-items: flex-start;
-  }
-  
-  .mixer-card__controls {
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-  
-  .mixer-control {
-    flex: 1 1 auto;
-    min-width: auto;
-  }
-  
-  .mixer-stream {
-    overflow-x: auto;
-    padding: 0.5rem;
-  }
+body.theme-terminal .mixer-control__description {
+  display: none; /* Keep it dense */
 }
 
-/* Horizontal scroll on mobile for wide mixer layouts */
+/* Responsive */
 @media (max-width: 480px) {
-  .mixer-card__controls {
-    display: flex;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    gap: 0.5rem;
-    padding-bottom: 0.5rem;
-    -webkit-overflow-scrolling: touch;
-  }
-  
-  .mixer-control {
-    flex: 0 0 260px;
-    min-width: 260px;
-  }
-}
-
-/* ============================================================
-   Windows High Contrast Mode Support
-   ============================================================ */
-
-@media (forced-colors: active) {
-  :root {
-    --term-bg: Canvas;
-    --term-text: CanvasText;
-    --term-accent: Highlight;
-    --term-focus-color: Highlight;
-    --term-border-color: CanvasText;
-  }
-  
-  body {
-    background-color: Canvas;
-    color: CanvasText;
-  }
-  
-  .mixer-card,
-  .mixer-control,
-  .mixer-control__toggle,
-  .mixer-control__volume-track {
-    border: 1px solid CanvasText;
-    forced-color-adjust: none;
-  }
-  
-  .mixer-control__volume-fill {
-    background-color: Highlight;
-  }
-  
-  .mixer-control__toggle[aria-checked="true"] {
-    background-color: Highlight;
-    color: HighlightText;
-  }
-  
-  :where(a,
-  button,
-  input,
-  textarea,
-  select,
-  [role="button"],
-  [role="slider"],
-  [role="switch"]):focus-visible {
-    outline: 2px solid Highlight;
-    outline-offset: 2px;
-  }
-  
-  /* Ensure volume bar is visible in forced colors */
-  .mixer-control__volume-track::before {
-    background: repeating-linear-gradient(
-      90deg,
-      Highlight 0px,
-      Highlight 8px,
-      Canvas 8px,
-      Canvas 10px
-    );
-  }
-}
-
-/* ============================================================
-   Reduced Motion Support
-   ============================================================ */
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.001ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.001ms !important;
-    scroll-behavior: auto !important;
-  }
-}
-
-/* ============================================================
-   Print Styles
-   ============================================================ */
-
-@media print {
-  body {
-    background-color: white;
-    color: black;
-  }
-  
-  .mixer-card,
-  .mixer-control {
-    border: 1px solid black;
-    break-inside: avoid;
-  }
-  
-  .app-footer {
-    display: none;
+  body.theme-terminal .mixer-card__controls {
+    grid-template-columns: 1fr 1fr;
   }
 }
