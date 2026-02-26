@@ -207,6 +207,29 @@ async function runTests() {
         console.log(`  Interacted with page elements without errors`);
     });
     
+    // Test 7: Verify 'Master' is the first playback control (if present)
+    await test('Master control is first (Sorting check)', async () => {
+        await page.reload();
+        await page.waitForSelector('.mixer-control__label', { timeout: 10000 });
+        
+        // Get all control labels
+        const labels = await page.locator('.mixer-control__label').allTextContents();
+        
+        const hasMaster = labels.some(l => l.includes('Master'));
+        if (hasMaster) {
+            const firstLabel = labels[0];
+            // Check if Master is among the first few controls (allowing for edge cases or card specific controls)
+            // But strict sorting says Master should be #1 if it exists.
+            if (!firstLabel.includes('Master')) {
+                throw new Error(`Sorting failed: 'Master' exists but is not first. First is: '${firstLabel}'`);
+            }
+            console.log("  Verified 'Master' is first");
+        } else {
+            console.log("  'Master' control not found, skipping sorting check");
+        }
+        consoleMonitor.assertNoErrors();
+    });
+    
     console.log(`\n========================================`);
     console.log(`Tests passed: ${passed}`);
     console.log(`Tests failed: ${failed}`);

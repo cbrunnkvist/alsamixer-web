@@ -19,15 +19,6 @@ var volumeSuffixes = []string{
 	" Volume",
 }
 
-func extractBaseName(controlName string) string {
-	for _, suffix := range volumeSuffixes {
-		if strings.HasSuffix(controlName, suffix) {
-			return strings.TrimSuffix(controlName, suffix)
-		}
-	}
-	return controlName
-}
-
 // Card represents an ALSA sound card
 type Card struct {
 	ID   uint   // Card index
@@ -87,55 +78,8 @@ func (m *Mixer) ListCards() ([]Card, error) {
 }
 
 // ListControls enumerates all mixer controls for a given card.
-// Tries amixer first for correct ordering, falls back to library.
+// It uses the underlying library which handles proper sorting (matching alsamixer).
 func (m *Mixer) ListControls(card uint) ([]Control, error) {
-	// Try amixer for proper ordering first
-	controlNames, err := m.getControlNamesInOrder(card)
-	if err == nil && len(controlNames) > 0 {
-		// Success with amixer - get full control info from library
-		libraryControls, libErr := m.listControlsByLibrary(card)
-		if libErr == nil && len(libraryControls) > 0 {
-			// Reorder library controls to match amixer order
-			return m.reorderControls(libraryControls, controlNames), nil
-		}
-	}
-
-	// Fall back to library ordering
-	return m.listControlsByLibrary(card)
-}
-
-// reorderControls reorders library controls to match amixer order
-func (m *Mixer) reorderControls(controls []Control, amixerOrder []string) []Control {
-	// Build a map of base name -> control (strip suffixes like " Playback Volume", " Volume", etc.)
-	nameToControl := make(map[string]Control)
-	for _, c := range controls {
-		baseName := extractBaseName(c.Name)
-		nameToControl[baseName] = c
-	}
-
-	var result []Control
-	added := make(map[string]bool)
-
-	for _, name := range amixerOrder {
-		if c, ok := nameToControl[name]; ok && !added[name] {
-			result = append(result, c)
-			added[name] = true
-		}
-	}
-	// Add any remaining controls not in amixer list
-	for _, c := range controls {
-		baseName := extractBaseName(c.Name)
-		if !added[baseName] {
-			result = append(result, c)
-			added[baseName] = true
-		}
-	}
-	return result
-}
-
-// listControlsByLibrary returns controls using the gen2brain/alsa library.
-// This is the fallback when amixer is unavailable or fails.
-func (m *Mixer) listControlsByLibrary(card uint) ([]Control, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
