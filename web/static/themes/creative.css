@@ -6,6 +6,7 @@
 
 /* ============================================================
    CSS Custom Properties - Neon color palette
+   Using hex/rgba for maximum browser compatibility
    ============================================================ */
 :root {
   /* Core cyberpunk dark backgrounds */
@@ -18,27 +19,27 @@
   --cyber-cyan: #00f5ff;
   --cyber-cyan-glow: rgba(0, 245, 255, 0.6);
   --cyber-cyan-dim: #00a8b0;
+  
   --cyber-magenta: #ff00ff;
   --cyber-magenta-glow: rgba(255, 0, 255, 0.6);
   --cyber-magenta-dim: #b000b0;
   
   /* Secondary accents */
-  --cyber-yellow: #f0f000;
-  --cyber-yellow-glow: rgba(240, 240, 0, 0.5);
-  --cyber-orange: #ff6b35;
-  --cyber-pink: #ff006e;
+  --cyber-yellow: #ffd700;
+  --cyber-orange: #ff8c00;
+  --cyber-pink: #ff6b9d;
   
   /* Text colors */
   --cyber-text-primary: #e8e8f0;
-  --cyber-text-secondary: #a0a0b8;
-  --cyber-text-muted: #606070;
+  --cyber-text-secondary: #b0b0c0;
+  --cyber-text-muted: #606080;
   --cyber-text-bright: #ffffff;
   
   /* Gradients */
   --cyber-gradient-cyan: linear-gradient(135deg, #00f5ff, #00a8b0);
   --cyber-gradient-magenta: linear-gradient(135deg, #ff00ff, #b000b0);
   --cyber-gradient-volume: linear-gradient(90deg, #ff00ff, #00f5ff);
-  --cyber-gradient-card: linear-gradient(145deg, rgba(26, 26, 46, 0.9), rgba(18, 18, 31, 0.95));
+  --cyber-gradient-card: linear-gradient(145deg, #1a1a2e, #12121f);
   
   /* Glow effects */
   --cyber-glow-cyan: 0 0 10px var(--cyber-cyan-glow), 0 0 20px var(--cyber-cyan-glow);
@@ -48,7 +49,14 @@
   /* Borders */
   --cyber-border-cyan: 1px solid rgba(0, 245, 255, 0.3);
   --cyber-border-magenta: 1px solid rgba(255, 0, 255, 0.3);
-  --cyber-border-dim: 1px solid rgba(255, 255, 255, 0.1);
+  --cyber-border-dim: 1px solid rgba(100, 100, 150, 0.15);
+  
+  /* Background accents */
+  --cyber-accent-bg: rgba(0, 245, 255, 0.03);
+  --cyber-accent-bg-glow: rgba(0, 245, 255, 0.05);
+  --cyber-danger: #ff4444;
+  --cyber-danger-glow: rgba(255, 68, 68, 0.6);
+  --cyber-danger-bg: rgba(255, 68, 68, 0.1);
   
   /* Focus styles */
   --cyber-focus-color: var(--cyber-cyan);
@@ -76,11 +84,12 @@ body {
   font-family: var(--cyber-font-body);
   font-size: var(--cyber-font-size);
   line-height: var(--cyber-line-height);
-  background-color: var(--cyber-bg-primary);
+  /* Override base.css background - use explicit hex, not variable */
+  background-color: #0a0a12 !important;
   background-image: 
-    radial-gradient(ellipse at 20% 20%, rgba(0, 245, 255, 0.03) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 80%, rgba(255, 0, 255, 0.03) 0%, transparent 50%),
-    linear-gradient(180deg, var(--cyber-bg-primary) 0%, var(--cyber-bg-secondary) 100%);
+    radial-gradient(ellipse at 0% 0%, rgba(0, 245, 255, 0.04) 0%, transparent 40%),
+    radial-gradient(ellipse at 100% 100%, rgba(255, 0, 255, 0.04) 0%, transparent 40%),
+    linear-gradient(180deg, #0a0a12 0%, #0d0d18 50%, #0a0a12 100%) !important;
   background-attachment: fixed;
   color: var(--cyber-text-primary);
   min-height: 100vh;
@@ -95,8 +104,8 @@ body::before {
   right: 0;
   bottom: 0;
   background-image: 
-    linear-gradient(rgba(0, 245, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 245, 255, 0.03) 1px, transparent 1px);
+    linear-gradient(rgba(0, 245, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 245, 255, 0.02) 1px, transparent 1px);
   background-size: 50px 50px;
   pointer-events: none;
   z-index: -1;
@@ -348,7 +357,7 @@ body::before {
 }
 
 .mixer-card__header {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(100, 100, 150, 0.08);
   padding: 1rem 1.25rem;
   background: rgba(0, 0, 0, 0.2);
 }
@@ -464,7 +473,7 @@ body::before {
   flex: 1;
   height: 12px;
   background: rgba(0, 0, 0, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(100, 100, 150, 0.1);
   border-radius: 6px;
   position: relative;
   overflow: hidden;
@@ -544,7 +553,7 @@ body::before {
   font-size: 0.85rem;
   font-weight: 500;
   background: rgba(0, 0, 0, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(100, 100, 150, 0.1);
   border-radius: var(--cyber-radius-sm);
   color: var(--cyber-text-secondary);
   padding: 0.5rem 1rem;
@@ -582,14 +591,14 @@ body::before {
 
 /* Active state for mute toggle */
 .mixer-control__toggle--mute[aria-checked="true"] {
-  background: rgba(255, 0, 0, 0.1);
-  border-color: rgba(255, 0, 0, 0.4);
-  color: #ff4444;
+  background: var(--cyber-danger-bg);
+  border-color: rgba(255, 68, 68, 0.4);
+  color: var(--cyber-danger);
 }
 
 .mixer-control__toggle--mute[aria-checked="true"]::before {
-  background: #ff4444;
-  box-shadow: 0 0 10px rgba(255, 0, 0, 0.6);
+  background: var(--cyber-danger);
+  box-shadow: 0 0 10px var(--cyber-danger-glow);
 }
 
 /* Active state for capture toggle */

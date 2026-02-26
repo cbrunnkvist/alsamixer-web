@@ -177,7 +177,7 @@ a {
 }
 
 .mixer-control.is-filtered {
-  display: none;
+  display: none !important;
 }
 
 .mixer-card__nav {

@@ -113,7 +113,6 @@ func controlViewType(controlName string) string {
 	if strings.Contains(name, "capture") ||
 		strings.Contains(name, "mic") ||
 		strings.Contains(name, "boost") ||
-		strings.Contains(name, "pre-amp") ||
 		strings.Contains(name, "input") ||
 		strings.Contains(name, "digital") {
 		return "capture"

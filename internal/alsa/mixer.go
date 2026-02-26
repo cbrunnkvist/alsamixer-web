@@ -376,12 +376,15 @@ func (m *Mixer) SetMute(card uint, control string, muted bool) error {
 
 // HasPlaybackVolume checks if a control has playback volume capability.
 // Uses amixer to get the capabilities string which indicates pvolume (playback volume).
+// Also returns true for generic "volume" capability (used by softvol controls like Pre-amp).
 func (m *Mixer) HasPlaybackVolume(card uint, control string) (bool, error) {
 	capabilities, err := m.getControlCapabilities(card, control)
 	if err != nil {
 		return false, err
 	}
-	return strings.Contains(capabilities, "pvolume"), nil
+	// Check for explicit pvolume first, then fall back to generic "volume"
+	// (used by softvol pre-amp controls)
+	return strings.Contains(capabilities, "pvolume") || strings.Contains(capabilities, "volume"), nil
 }
 
 // HasPlaybackSwitch checks if a control has playback switch (mute) capability.
@@ -396,12 +399,15 @@ func (m *Mixer) HasPlaybackSwitch(card uint, control string) (bool, error) {
 
 // HasCaptureVolume checks if a control has capture volume capability.
 // Uses amixer to get the capabilities string which indicates cvolume (capture volume).
+// Also returns true for generic "volume" capability (used by softvol controls like Pre-amp).
 func (m *Mixer) HasCaptureVolume(card uint, control string) (bool, error) {
 	capabilities, err := m.getControlCapabilities(card, control)
 	if err != nil {
 		return false, err
 	}
-	return strings.Contains(capabilities, "cvolume"), nil
+	// Check for explicit cvolume first, then fall back to generic "volume"
+	// (used by softvol pre-amp controls)
+	return strings.Contains(capabilities, "cvolume") || strings.Contains(capabilities, "volume"), nil
 }
 
 // HasCaptureSwitch checks if a control has capture switch capability.
