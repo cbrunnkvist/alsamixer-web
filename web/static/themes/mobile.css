@@ -542,7 +542,7 @@ body {
    Navigation Arrows - Optional, for non-touch devices
    ============================================================ */
 
-.mixer-nav {
+.mixer-card__nav {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -556,7 +556,7 @@ body {
   z-index: 10;
 }
 
-.mixer-nav__btn {
+.mixer-card__nav-button {
   width: var(--mobile-touch-target);
   height: var(--mobile-touch-target);
   border-radius: var(--mobile-radius-full);
@@ -575,26 +575,33 @@ body {
   box-shadow: var(--mobile-shadow-md);
 }
 
-.mixer-nav__btn:hover {
+.mixer-card__nav-button:hover {
   background-color: var(--mobile-accent);
   color: #000000;
 }
 
-.mixer-nav__btn:active {
+.mixer-card__nav-button:active {
   transform: scale(0.9);
 }
 
-.mixer-nav__btn--prev::before {
+.mixer-card__nav-button[data-nav="prev"]::before {
   content: "‹";
 }
 
-.mixer-nav__btn--next::before {
+.mixer-card__nav-button[data-nav="next"]::before {
   content: "›";
+}
+
+.mixer-card__nav-label {
+  font-size: var(--mobile-text-sm);
+  color: var(--mobile-text-secondary);
+  min-width: 6ch;
+  text-align: center;
 }
 
 /* Hide nav on very small screens */
 @media (max-width: 360px) {
-  .mixer-nav {
+  .mixer-card__nav {
     display: none;
   }
 }
@@ -754,7 +761,7 @@ body {
   
   /* Hide pagination on desktop */
   .mixer-pagination,
-  .mixer-nav {
+  .mixer-card__nav {
     display: none;
   }
   
@@ -763,6 +770,22 @@ body {
     max-width: 1200px;
     margin-inline: auto;
   }
+}
+
+/* ============================================================
+   Compact Mode - Show single control at a time
+   ============================================================ */
+
+.mixer-card.is-compact .mixer-control {
+  display: none;
+}
+
+.mixer-card.is-compact .mixer-control.is-active {
+  display: flex;
+}
+
+.mixer-card.is-compact .mixer-card__controls {
+  justify-content: center;
 }
 
 /* ============================================================
