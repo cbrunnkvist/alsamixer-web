@@ -47,11 +47,6 @@
       controls[i].classList.toggle('is-active', i === next)
     }
 
-    var label = card.querySelector('[data-active-label]')
-    if (label) {
-      label.textContent = controls[next].getAttribute('data-control-name') || ''
-    }
-
     // Update nav button visibility
     var prevBtn = card.querySelector('[data-nav="prev"]')
     var nextBtn = card.querySelector('[data-nav="next"]')
@@ -89,6 +84,10 @@
     // Compact mode (carousel) for viewports narrower than desktop
     var compact = window.matchMedia('(max-width: 959px)').matches
     card.classList.toggle('is-compact', compact)
+
+    // Lock body scroll if any card is in compact mode (carousel view)
+    var anyCompact = document.querySelector('.mixer-card.is-compact') !== null
+    document.documentElement.classList.toggle('is-locked', anyCompact)
   }
 
   function debounce(func, wait) {
