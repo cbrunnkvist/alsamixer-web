@@ -77,6 +77,20 @@
     card.classList.toggle('is-compact', compact)
   }
 
+  function debounce(func, wait) {
+    var timeout
+    return function () {
+      var context = this
+      var args = arguments
+      var later = function () {
+        timeout = null
+        func.apply(context, args)
+      }
+      clearTimeout(timeout)
+      timeout = setTimeout(later, wait)
+    }
+  }
+
   function initCard(card) {
     var defaultView = card.getAttribute('data-current-view') || 'playback'
     setView(card, defaultView)
@@ -91,15 +105,53 @@
       })
     }
 
+    // New navigation logic for scrolling container
+    var controlsContainer = card.querySelector('.mixer-card__controls')
     var navButtons = toArray(card.querySelectorAll('[data-nav]'))
+
     for (var j = 0; j < navButtons.length; j++) {
       navButtons[j].addEventListener('click', function (event) {
         var direction = event.currentTarget.getAttribute('data-nav')
-        var current = parseInt(card.getAttribute('data-active-index') || '0', 10)
-        var next = direction === 'prev' ? current - 1 : current + 1
-        setActiveIndex(card, next)
+        var controls = visibleControls(card)
+        var currentIdx = parseInt(card.getAttribute('data-active-index') || '0', 10)
+        var nextIdx = currentIdx + (direction === 'next' ? 1 : -1)
+
+        if (nextIdx >= 0 && nextIdx < controls.length) {
+          var targetControl = controls[nextIdx]
+          targetControl.scrollIntoView({
+            behavior: 'smooth',
+            inline: 'center',
+            block: 'nearest'
+          })
+          // The scroll handler will call setActiveIndex
+        }
       })
     }
+
+    var onScroll = debounce(function () {
+      var containerCenter = controlsContainer.scrollLeft + (controlsContainer.offsetWidth / 2)
+      var controls = visibleControls(card)
+      var closest = { index: -1, distance: Infinity }
+
+      for (var i = 0; i < controls.length; i++) {
+        var controlCenter = controls[i].offsetLeft + (controls[i].offsetWidth / 2)
+        var distance = Math.abs(containerCenter - controlCenter)
+        if (distance < closest.distance) {
+          closest.index = i
+          closest.distance = distance
+        }
+      }
+
+      if (closest.index !== -1) {
+        var currentActive = parseInt(card.getAttribute('data-active-index') || '-1', 10)
+        if (currentActive !== closest.index) {
+          setActiveIndex(card, closest.index)
+        }
+      }
+    }, 150)
+
+    controlsContainer.addEventListener('scroll', onScroll)
+
 
     applyCompact(card)
   }

@@ -772,20 +772,8 @@ body {
   }
 }
 
-/* ============================================================
-   Compact Mode - Show single control at a time
-   ============================================================ */
-
-.mixer-card.is-compact .mixer-control {
+.mixer-card.is-compact .mixer-card__nav-label {
   display: none;
-}
-
-.mixer-card.is-compact .mixer-control.is-active {
-  display: flex;
-}
-
-.mixer-card.is-compact .mixer-card__controls {
-  justify-content: center;
 }
 
 /* ============================================================
