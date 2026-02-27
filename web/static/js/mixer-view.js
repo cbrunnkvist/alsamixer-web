@@ -51,6 +51,19 @@
     if (label) {
       label.textContent = controls[next].getAttribute('data-control-name') || ''
     }
+
+    // Update nav button visibility
+    var prevBtn = card.querySelector('[data-nav="prev"]')
+    var nextBtn = card.querySelector('[data-nav="next"]')
+    if (prevBtn && nextBtn) {
+      if (controls.length <= 1) {
+        prevBtn.style.visibility = 'hidden'
+        nextBtn.style.visibility = 'hidden'
+      } else {
+        prevBtn.style.visibility = next === 0 ? 'hidden' : 'visible'
+        nextBtn.style.visibility = next === controls.length - 1 ? 'hidden' : 'visible'
+      }
+    }
   }
 
   function setView(card, view) {
@@ -73,7 +86,8 @@
   }
 
   function applyCompact(card) {
-    var compact = window.matchMedia('(max-width: 720px)').matches
+    // Compact mode (carousel) for viewports narrower than desktop
+    var compact = window.matchMedia('(max-width: 1023px)').matches
     card.classList.toggle('is-compact', compact)
   }
 
@@ -118,10 +132,9 @@
 
         if (nextIdx >= 0 && nextIdx < controls.length) {
           var targetControl = controls[nextIdx]
-          // Calculate scroll position to center the target control
-          var containerRect = controlsContainer.getBoundingClientRect()
-          var controlRect = targetControl.getBoundingClientRect()
-          var scrollLeft = targetControl.offsetLeft - (containerRect.width / 2) + (controlRect.width / 2)
+          // Calculate scroll position based on index (each control is 100% width in carousel)
+          var controlWidth = controlsContainer.offsetWidth
+          var scrollLeft = nextIdx * controlWidth
           
           // Directly scroll the container without affecting the page
           controlsContainer.scrollTo({

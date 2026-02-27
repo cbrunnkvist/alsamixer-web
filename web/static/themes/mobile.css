@@ -266,6 +266,7 @@ body {
 
 .mixer-card__controls {
   display: flex;
+  flex-wrap: nowrap;
   overflow-x: auto;
   overflow-y: hidden;
   scroll-snap-type: x mandatory;
@@ -291,21 +292,57 @@ body {
   scroll-snap-align: center;
   scroll-snap-stop: always;
   padding: var(--mobile-spacing-lg);
+  padding-top: var(--mobile-spacing-xl);
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: center;
   background-color: var(--mobile-bg);
 }
 
-/* ============================================================
-   Control Header - Large, readable at arm's length
-   ============================================================ */
+/* In compact mode, ensure horizontal scrolling carousel */
+.mixer-card.is-compact .mixer-control {
+  opacity: 1;
+  pointer-events: auto;
+}
 
+.mixer-card.is-compact .mixer-control.is-active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* In compact mode, ensure horizontal scrolling carousel */
+.mixer-card.is-compact .mixer-card__controls {
+  display: flex;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  flex-wrap: nowrap;
+}
+
+.mixer-card.is-compact .mixer-card__nav {
+  display: flex;
+}
+
+
+/* Ensure header has consistent height for vertical alignment */
 .mixer-control__header {
+  min-height: 3.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
   text-align: center;
-  margin-bottom: var(--mobile-spacing-xl);
+  margin-bottom: var(--mobile-spacing-lg);
   padding: 0 var(--mobile-spacing-md);
+}
+
+@media (min-width: 640px) {
+  .mixer-control__header {
+    min-height: auto;
+    justify-content: flex-start;
+    align-items: flex-start;
+  }
 }
 
 .mixer-control__label {
@@ -553,7 +590,7 @@ body {
   right: 0;
   transform: translateY(-50%);
   pointer-events: none;
-  z-index: 10;
+  z-index: 100;
 }
 
 .mixer-card__nav-button {
@@ -585,10 +622,7 @@ body {
 }
 
 .mixer-card__nav-label {
-  font-size: var(--mobile-text-sm);
-  color: var(--mobile-text-secondary);
-  min-width: 6ch;
-  text-align: center;
+  display: none;
 }
 
 /* Hide nav on very small screens */
@@ -675,20 +709,27 @@ body {
 }
 
 /* ============================================================
-   RESPONSIVE: Tablet (show 2 controls)
+   RESPONSIVE: Tablet (show 2 controls when NOT in compact mode)
    ============================================================ */
 
 @media (min-width: 640px) {
-  .mixer-control {
+  /* Only apply 2-column layout when NOT in compact mode (desktop) */
+  .mixer-card:not(.is-compact) .mixer-control {
     flex: 0 0 50%;
     min-width: 50%;
+  }
+  
+  /* In compact mode (carousel), keep controls at 100% width */
+  .mixer-card.is-compact .mixer-control {
+    flex: 0 0 100%;
+    min-width: 100%;
   }
   
   .mixer-control__volume-track {
     height: 280px;
   }
 }
-
+   
 /* ============================================================
    RESPONSIVE: Desktop (show all controls, horizontal volume)
    ============================================================ */
@@ -762,10 +803,6 @@ body {
     max-width: 1200px;
     margin-inline: auto;
   }
-}
-
-.mixer-card.is-compact .mixer-card__nav-label {
-  display: none;
 }
 
 /* ============================================================
