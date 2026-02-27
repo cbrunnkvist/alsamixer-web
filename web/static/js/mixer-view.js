@@ -87,7 +87,7 @@
 
   function applyCompact(card) {
     // Compact mode (carousel) for viewports narrower than desktop
-    var compact = window.matchMedia('(max-width: 1023px)').matches
+    var compact = window.matchMedia('(max-width: 959px)').matches
     card.classList.toggle('is-compact', compact)
   }
 
@@ -141,7 +141,11 @@
             left: scrollLeft,
             behavior: 'smooth'
           })
-          // The scroll handler will call setActiveIndex
+
+          // Immediately update state. This is essential for themes that don't use 
+          // a horizontal scroll track (like Linux Console) where no scroll event will fire.
+          // For scrolling themes, this provides immediate feedback while the scroll animates.
+          setActiveIndex(card, nextIdx)
         }
       })
     }

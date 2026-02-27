@@ -734,7 +734,7 @@ body {
    RESPONSIVE: Desktop (show all controls, horizontal volume)
    ============================================================ */
 
-@media (min-width: 1024px) {
+@media (min-width: 960px) {
   /* Reset to grid layout */
   .mixer-card__controls {
     display: grid;
