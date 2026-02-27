@@ -584,14 +584,6 @@ body {
   transform: scale(0.9);
 }
 
-.mixer-card__nav-button[data-nav="prev"]::before {
-  content: "‹";
-}
-
-.mixer-card__nav-button[data-nav="next"]::before {
-  content: "›";
-}
-
 .mixer-card__nav-label {
   font-size: var(--mobile-text-sm);
   color: var(--mobile-text-secondary);

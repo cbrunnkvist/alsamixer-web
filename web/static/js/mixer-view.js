@@ -118,10 +118,15 @@
 
         if (nextIdx >= 0 && nextIdx < controls.length) {
           var targetControl = controls[nextIdx]
-          targetControl.scrollIntoView({
-            behavior: 'smooth',
-            inline: 'center',
-            block: 'nearest'
+          // Calculate scroll position to center the target control
+          var containerRect = controlsContainer.getBoundingClientRect()
+          var controlRect = targetControl.getBoundingClientRect()
+          var scrollLeft = targetControl.offsetLeft - (containerRect.width / 2) + (controlRect.width / 2)
+          
+          // Directly scroll the container without affecting the page
+          controlsContainer.scrollTo({
+            left: scrollLeft,
+            behavior: 'smooth'
           })
           // The scroll handler will call setActiveIndex
         }
