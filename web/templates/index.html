@@ -3,9 +3,7 @@
 {{ define "header_title" }}ALSA Mixer Web{{ end }}
 
 {{ define "content" }}
-  <section class="mixer-shell" aria-labelledby="mixer-heading">
-    <h2 id="mixer-heading" class="sr-only">Mixer controls</h2>
-
+  <section class="mixer-shell">
     <div class="mixer-stream">
       {{if .Cards}}
         {{template "controls" .}}

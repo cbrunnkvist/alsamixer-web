@@ -81,10 +81,6 @@ select,
    */
 }
 
-#mixer-live-region[aria-live] {
-  /* Explicit hook for the mixer announcement region */
-}
-
 /* High contrast / forced colors mode support */
 @media (forced-colors: active) {
   :root {

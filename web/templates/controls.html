@@ -10,13 +10,10 @@
 
 {{define "controls"}}
 <main id="mixer-main" class="mixer-main" role="main" aria-label="ALSA mixer controls">
-  <section id="mixer-live-region" class="sr-only" aria-live="polite" aria-atomic="true"></section>
-
   {{range .Cards}}
   <section class="mixer-card" aria-labelledby="card-{{.ID}}" data-card-id="{{.ID}}" data-current-view="playback">
     <header class="mixer-card__header">
       <div class="mixer-card__title-row">
-        <span class="mixer-card__index" aria-hidden="true">Card {{.ID}}</span>
         <h2 id="card-{{.ID}}" class="mixer-card__title">{{.Name}}</h2>
       </div>
       {{if .Description}}
