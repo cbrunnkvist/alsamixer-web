@@ -43,6 +43,9 @@ go.work
 .DS_Store
 Thumbs.db
 
+# Kilo specifics
+.kilo/
+
 # Dependencies (keep go.mod/go.sum)
 /vendor/
 
