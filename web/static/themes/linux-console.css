@@ -35,11 +35,13 @@ body {
 .mixer-card {
   border: 1px solid var(--lc-border);
   background-color: transparent;
+  margin: 1.5rem;
 }
 
 .mixer-card__header {
   background-color: transparent;
   border-bottom: 1px solid var(--lc-border-dim);
+  padding: 1rem 1.25rem;
 }
 
 .mixer-card__title {
@@ -50,8 +52,8 @@ body {
 .mixer-card__controls {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
-  padding: 0.75rem;
+  gap: 1.25rem;
+  padding: 1.5rem 1.25rem;
   overflow: hidden;
 }
 
@@ -62,12 +64,12 @@ body {
 }
 
 .mixer-control {
-  flex: 1 1 96px;
-  min-width: 88px;
-  max-width: 140px;
+  flex: 1 1 120px;
+  min-width: 100px;
+  max-width: 160px;
   border: 1px solid var(--lc-border-dim);
   background-color: transparent;
-  padding: 0.5rem 0.4rem;
+  padding: 1.25rem 0.75rem;
   text-align: center;
 }
 
@@ -77,8 +79,8 @@ body {
 }
 
 .mixer-control__header {
-  margin-bottom: 0.4rem;
-  min-height: 2.5rem; /* Fixed height to accommodate multi-line labels */
+  margin-bottom: 0.75rem;
+  min-height: 3rem; /* Fixed height to accommodate multi-line labels */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -134,8 +136,8 @@ body {
 
 .mixer-card__view {
   display: inline-flex;
-  gap: 0.35rem;
-  margin-top: 0.4rem;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
 }
 
 .mixer-card__view-button {
