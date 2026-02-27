@@ -78,6 +78,10 @@ body {
 
 .mixer-control__header {
   margin-bottom: 0.4rem;
+  min-height: 2.5rem; /* Fixed height to accommodate multi-line labels */
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .mixer-control__label {
@@ -85,6 +89,7 @@ body {
   color: var(--lc-text-dim);
   text-transform: none;
   margin: 0;
+  line-height: 1.2;
 }
 
 .mixer-control__body {
