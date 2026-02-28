@@ -621,10 +621,6 @@ body {
   transform: scale(0.9);
 }
 
-.mixer-card__nav-label {
-  display: none;
-}
-
 /* Hide nav on very small screens */
 @media (max-width: 360px) {
   .mixer-card__nav {

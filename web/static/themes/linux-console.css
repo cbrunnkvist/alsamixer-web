@@ -27,19 +27,27 @@ body {
   color: var(--lc-text);
 }
 
+body.theme-linux-console .app-main {
+  padding: 1rem;
+}
+
 .mixer-stream {
   background-color: var(--lc-panel);
-  border-color: var(--lc-border);
+  border: 1px solid var(--lc-border);
+  border-radius: 0.5rem;
+  padding: 0;
+  overflow: hidden;
 }
 
 .mixer-shell {
-  padding: 0.5rem;
+  padding: 0;
 }
 
 .mixer-card {
-  border: 1px solid var(--lc-border);
+  border: none;
   background-color: transparent;
-  margin: 0.75rem auto;
+  margin: 0;
+  width: 100%;
 }
 
 .mixer-card__header {
@@ -217,25 +225,31 @@ body {
 
 .mixer-card__nav {
   display: none;
+  justify-content: space-between;
   align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.75rem 0.75rem;
+  padding: 0 0.75rem 0.75rem;
+  margin-top: -0.5rem;
 }
 
 .mixer-card__nav-button {
   background-color: transparent;
   color: var(--lc-text);
   border: 1px solid var(--lc-border);
-  padding: 0.1rem 0.35rem;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.8rem;
+  font-weight: bold;
   cursor: pointer;
+  transition: all 0.1s steps(2);
 }
 
-.mixer-card__nav-label {
-  font-size: 0.75rem;
-  color: var(--lc-text-dim);
-  min-width: 6ch;
-  text-align: center;
+.mixer-card__nav-button:hover {
+  background-color: var(--lc-panel);
+  color: var(--lc-accent);
+}
+
+.mixer-card__nav-button:active {
+  background-color: var(--lc-accent);
+  color: #000;
 }
 
 .mixer-card__empty {

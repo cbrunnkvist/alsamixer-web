@@ -2,6 +2,8 @@
 
 A web-based mixer control for Linux ALSA sound cards. Control your audio settings from any browser.
 
+**[View Screenshot Gallery →](SCREENSHOT-GALLERY.md)**
+
 ## What is this?
 
 alsamixer-web brings the classic alsamixer experience to the web. It's a Go backend that interfaces with ALSA mixer controls, paired with a lightweight HTMX-powered frontend. Think of it as a remote control for your sound card.
