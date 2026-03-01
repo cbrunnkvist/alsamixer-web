@@ -1,3 +1,6 @@
 [submodule "references/alsa-utils"]
 	path = references/alsa-utils
 	url = https://github.com/alsa-project/alsa-utils.git
+[submodule "references/gen2brain-alsa"]
+	path = references/gen2brain-alsa
+	url = https://github.com/gen2brain/alsa.git
